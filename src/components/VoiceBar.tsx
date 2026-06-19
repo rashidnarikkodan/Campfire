@@ -55,10 +55,10 @@ export default function VoiceBar({ socket, roomId }: VoiceBarProps) {
           : "Hold Space or press the mic";
 
   return (
-    <section className="flex items-center justify-between gap-4 rounded-[1.8rem] bg-forest-night/10 backdrop-blur-xl px-4 py-4">
-      <div className="flex min-w-0 items-center gap-3">
-        <Volume2 size={16} className={activeSpeakers.length ? "text-flame" : "text-smoke"} />
-        <p className="truncate text-xs leading-6 text-smoke sm:text-sm">{speakerText}</p>
+    <section className="flex items-center justify-between gap-2 sm:gap-4 rounded-xl sm:rounded-[1.8rem] bg-forest-night/10 backdrop-blur-xl px-3 sm:px-4 py-3 sm:py-4">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+        <Volume2 size={14} className={`shrink-0 sm:w-4 sm:h-4 ${activeSpeakers.length ? "text-flame" : "text-smoke"}`} />
+        <p className="truncate text-xs sm:text-sm leading-5 sm:leading-6 text-smoke">{speakerText}</p>
       </div>
       <button
         onPointerDown={(event) => {
@@ -75,11 +75,11 @@ export default function VoiceBar({ socket, roomId }: VoiceBarProps) {
         }}
         disabled={isMuted || !roomId}
         aria-label={isSpeaking ? "Stop speaking" : "Push to talk"}
-        className={`grid h-14 w-14 shrink-0 place-items-center rounded-full transition disabled:pointer-events-none disabled:opacity-40 ${
-          isSpeaking ? "bg-ember text-forest-night" : "bg-ash/10 text-ash hover:bg-ash/15"
+        className={`grid h-12 sm:h-14 w-12 sm:w-14 shrink-0 place-items-center rounded-full transition active:scale-95 disabled:pointer-events-none disabled:opacity-40 ${
+          isSpeaking ? "bg-ember text-forest-night shadow-lg shadow-ember/50" : "bg-ash/10 text-ash hover:bg-ash/15 active:bg-ash/20"
         }`}
       >
-        {isMuted ? <MicOff size={22} /> : <Mic size={22} />}
+        {isMuted ? <MicOff size={20} className="sm:w-[22px] sm:h-[22px]" /> : <Mic size={20} className="sm:w-[22px] sm:h-[22px]" />}
       </button>
     </section>
   );

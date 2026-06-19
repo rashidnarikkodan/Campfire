@@ -54,29 +54,30 @@ export default function Campfire({ intensity = 0.44, size = "room" }: CampfirePr
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 
     const createParticle = (): Particle => {
-      const x = width / 2 + (Math.random() - 0.5) * 24;
+      const x = width / 2 + (Math.random() - 0.5) * 32;
       const y = height - 60;
-      const maxLife = 42 + Math.random() * 32;
+      const maxLife = 50 + Math.random() * 48;
+      const speedVariation = 0.6 + Math.random() * 1.4;
       return {
         x,
         y,
-        vx: (Math.random() - 0.5) * 0.82,
-        vy: -(1.45 + Math.random() * 2.3) * (0.78 + baseIntensity * 0.48),
-        size: (11 + Math.random() * 18) * (0.72 + baseIntensity * 0.34),
+        vx: (Math.random() - 0.5) * 1.2 * speedVariation,
+        vy: -(1.8 + Math.random() * 2.8) * (0.78 + baseIntensity * 0.52) * speedVariation,
+        size: (9 + Math.random() * 22) * (0.72 + baseIntensity * 0.44),
         maxLife,
         life: maxLife,
-        hue: 18 + Math.random() * 30,
+        hue: 15 + Math.random() * 45,
       };
     };
 
     const createEmber = (): Ember => ({
-      x: width / 2 + (Math.random() - 0.5) * 72,
-      y: height - 66,
-      vx: (Math.random() - 0.5) * 1.45,
-      vy: -(0.9 + Math.random() * 2.7) * (0.88 + baseIntensity * 0.34),
-      size: 1 + Math.random() * 2.5,
+      x: width / 2 + (Math.random() - 0.5) * 88,
+      y: height - 64,
+      vx: (Math.random() - 0.5) * 1.8,
+      vy: -(0.7 + Math.random() * 3.2) * (0.88 + baseIntensity * 0.44),
+      size: 0.8 + Math.random() * 3.2,
       life: 1,
-      decay: 0.005 + Math.random() * 0.01,
+      decay: 0.003 + Math.random() * 0.012,
     });
 
     const drawLogs = () => {
@@ -94,84 +95,106 @@ export default function Campfire({ intensity = 0.44, size = "room" }: CampfirePr
         context.translate(width / 2, y);
         context.rotate(rotation);
 
+        // Main wood gradient - darker, more realistic wood
         const logGradient = context.createLinearGradient(-length / 2, 0, length / 2, 0);
-        logGradient.addColorStop(0, "#442f1e");
-        logGradient.addColorStop(0.35, "#61442b");
-        logGradient.addColorStop(0.65, "#4d331f");
-        logGradient.addColorStop(1, "#321f14");
+        logGradient.addColorStop(0, "#3d2817");
+        logGradient.addColorStop(0.25, "#5a3f2a");
+        logGradient.addColorStop(0.5, "#4a3520");
+        logGradient.addColorStop(0.75, "#5a3f2a");
+        logGradient.addColorStop(1, "#3d2817");
 
         context.fillStyle = logGradient;
-        context.shadowColor = "rgba(0, 0, 0, 0.18)";
-        context.shadowBlur = 5;
+        context.shadowColor = "rgba(0, 0, 0, 0.35)";
+        context.shadowBlur = 8;
+        context.shadowOffsetY = 2;
         context.beginPath();
         context.roundRect(-length / 2, -10, length, 20, 10);
         context.fill();
 
+        // Wood grain texture
         context.shadowBlur = 0;
-        context.strokeStyle = "rgba(255, 255, 255, 0.06)";
-        context.lineWidth = 1;
+        context.globalAlpha = 0.4;
+        context.strokeStyle = "rgba(0, 0, 0, 0.3)";
+        context.lineWidth = 0.5;
+        for (let i = 0; i < 5; i++) {
+          const xPos = -length / 2 + (i * length) / 5;
+          context.beginPath();
+          context.moveTo(xPos, -10);
+          context.lineTo(xPos, 10);
+          context.stroke();
+        }
+        context.globalAlpha = 1;
+
+        // Highlight on wood
+        context.strokeStyle = "rgba(255, 255, 255, 0.08)";
+        context.lineWidth = 1.5;
         context.beginPath();
         context.roundRect(-length / 2, -10, length, 20, 10);
         context.stroke();
 
-        context.fillStyle = "rgba(0, 0, 0, 0.14)";
+        // Dark wood knots
+        context.fillStyle = "rgba(0, 0, 0, 0.25)";
         for (let i = 0; i < 4; i += 1) {
-          const knotX = -length / 4 + i * (length / 6) + Math.random() * 8;
-          const knotY = Math.random() * 4 - 2;
+          const knotX = -length / 4 + i * (length / 6) + (Math.random() - 0.5) * 6;
+          const knotY = (Math.random() - 0.5) * 3;
           context.beginPath();
-          context.ellipse(knotX, knotY, 6, 3.5, Math.PI / 10, 0, Math.PI * 2);
+          context.ellipse(knotX, knotY, 5, 2.5, Math.PI / 10, 0, Math.PI * 2);
           context.fill();
         }
 
         context.restore();
       }
 
+      // Enhanced glow around logs
       const charGlow = context.createRadialGradient(
         width / 2,
         height - 56,
-        8,
+        12,
         width / 2,
         height - 56,
-        72
+        85
       );
-      charGlow.addColorStop(0, "rgba(255, 180, 90, 0.9)");
-      charGlow.addColorStop(0.3, "rgba(255, 130, 45, 0.35)");
+      charGlow.addColorStop(0, "rgba(255, 200, 100, 1)");
+      charGlow.addColorStop(0.2, "rgba(255, 150, 60, 0.6)");
+      charGlow.addColorStop(0.5, "rgba(255, 100, 40, 0.2)");
       charGlow.addColorStop(1, "rgba(9, 11, 10, 0)");
       context.fillStyle = charGlow;
       context.beginPath();
-      context.arc(width / 2, height - 56, 72, 0, Math.PI * 2);
+      context.arc(width / 2, height - 56, 85, 0, Math.PI * 2);
       context.fill();
 
+      // Ember ground
       const emberGround = context.createRadialGradient(
         width / 2,
         height - 58,
-        10,
+        15,
         width / 2,
         height - 58,
-        62
+        75
       );
-      emberGround.addColorStop(0, "rgba(255, 200, 105, 0.82)");
-      emberGround.addColorStop(0.4, "rgba(255, 125, 35, 0.22)");
+      emberGround.addColorStop(0, "rgba(255, 220, 140, 0.9)");
+      emberGround.addColorStop(0.35, "rgba(255, 140, 50, 0.35)");
       emberGround.addColorStop(1, "rgba(9, 11, 10, 0)");
       context.fillStyle = emberGround;
       context.beginPath();
-      context.arc(width / 2, height - 58, 62, 0, Math.PI * 2);
+      context.arc(width / 2, height - 58, 75, 0, Math.PI * 2);
       context.fill();
 
+      // Ash layer
       const ash = context.createRadialGradient(
         width / 2,
         height - 56,
-        3,
+        5,
         width / 2,
         height - 56,
-        36
+        45
       );
-      ash.addColorStop(0, "rgba(255, 255, 255, 0.76)");
-      ash.addColorStop(0.16, "rgba(255, 160, 75, 0.3)");
+      ash.addColorStop(0, "rgba(220, 200, 160, 0.6)");
+      ash.addColorStop(0.3, "rgba(200, 160, 100, 0.25)");
       ash.addColorStop(1, "rgba(9, 11, 10, 0)");
       context.fillStyle = ash;
       context.beginPath();
-      context.arc(width / 2, height - 56, 36, 0, Math.PI * 2);
+      context.arc(width / 2, height - 56, 45, 0, Math.PI * 2);
       context.fill();
     };
 
@@ -244,27 +267,27 @@ export default function Campfire({ intensity = 0.44, size = "room" }: CampfirePr
       const flameOffset = 8 * baseIntensity;
       context.globalCompositeOperation = "screen";
       createFlameLayer(-10 * flameOffset, 0, 0.9, 0.95, [
-        "rgba(255, 235, 150, 0.98)",
-        "rgba(255, 145, 35, 0.75)",
-        "rgba(255, 65, 24, 0.06)",
+        "rgba(255, 255, 200, 0.98)",
+        "rgba(255, 180, 50, 0.8)",
+        "rgba(255, 80, 30, 0.08)",
       ]);
       createFlameLayer(10 * flameOffset, -6, 0.72, 0.82, [
-        "rgba(255, 215, 110, 0.92)",
-        "rgba(255, 120, 36, 0.6)",
-        "rgba(235, 50, 22, 0.04)",
+        "rgba(255, 235, 140, 0.92)",
+        "rgba(255, 150, 40, 0.65)",
+        "rgba(240, 70, 25, 0.06)",
       ]);
       createFlameLayer(0, 8, 0.55, 0.6, [
-        "rgba(255, 255, 210, 0.88)",
-        "rgba(255, 165, 48, 0.5)",
-        "rgba(200, 40, 16, 0.02)",
+        "rgba(255, 255, 220, 0.88)",
+        "rgba(255, 200, 60, 0.55)",
+        "rgba(220, 60, 20, 0.03)",
       ]);
 
-      const spawnRate = Math.max(1, Math.round(3.4 * baseIntensity));
-      for (let i = 0; i < spawnRate && particles.length < 150; i += 1) {
+      const spawnRate = Math.max(1, Math.round(4.2 * baseIntensity));
+      for (let i = 0; i < spawnRate && particles.length < 180; i += 1) {
         particles.push(createParticle());
       }
 
-      if (Math.random() < 0.16 * baseIntensity && embers.length < 54) {
+      if (Math.random() < 0.22 * baseIntensity && embers.length < 72) {
         embers.push(createEmber());
       }
 
@@ -274,18 +297,26 @@ export default function Campfire({ intensity = 0.44, size = "room" }: CampfirePr
 
         particle.x += particle.vx;
         particle.y += particle.vy;
-        particle.vx += (width / 2 - particle.x) * 0.005;
+        particle.vx += (width / 2 - particle.x) * 0.0065;
 
         const lifeRatio = clamp(particle.life / particle.maxLife, 0, 1);
-        const currentSize = Math.max(0.35, particle.size * Math.sin(lifeRatio * Math.PI));
-        const hue = particle.hue - (1 - lifeRatio) * 25;
-        const lightness = 56 + lifeRatio * 16;
-        const opacity = Math.min(1, lifeRatio * 1.6);
+        const currentSize = Math.max(0.2, particle.size * Math.sin(lifeRatio * Math.PI));
+        const hue = particle.hue - (1 - lifeRatio) * 60;
+        const saturation = 100 - (1 - lifeRatio) * 40;
+        const lightness = Math.max(32, 62 + lifeRatio * 28 - (1 - lifeRatio) * 48);
+        const opacity = Math.min(1, lifeRatio * 2.2, (1 - lifeRatio) * 2);
 
-        context.fillStyle = `hsla(${hue}, 100%, ${lightness}%, ${opacity * 0.4})`;
+        context.fillStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, ${opacity * 0.5})`;
         context.beginPath();
         context.arc(particle.x, particle.y, currentSize, 0, Math.PI * 2);
         context.fill();
+
+        if (lifeRatio > 0.6) {
+          context.fillStyle = `hsla(${hue + 8}, 100%, ${Math.min(90, lightness + 20)}%, ${opacity * 0.2})`;
+          context.beginPath();
+          context.arc(particle.x, particle.y, currentSize * 1.3, 0, Math.PI * 2);
+          context.fill();
+        }
         return true;
       });
 
@@ -294,11 +325,17 @@ export default function Campfire({ intensity = 0.44, size = "room" }: CampfirePr
         if (ember.life <= 0) return false;
         ember.x += ember.vx;
         ember.y += ember.vy;
-        ember.vx += Math.sin(performance.now() / 250 + ember.y) * 0.045;
+        ember.vx += Math.sin(performance.now() / 200 + ember.y) * 0.06;
 
-        context.fillStyle = `rgba(255, 195, 90, ${ember.life})`;
+        const glow = Math.sin(performance.now() / 100 + ember.x) * 0.15 + 0.85;
+        context.fillStyle = `rgba(255, 200, 90, ${ember.life * glow * 0.9})`;
         context.beginPath();
         context.arc(ember.x, ember.y, ember.size, 0, Math.PI * 2);
+        context.fill();
+
+        context.fillStyle = `rgba(255, 160, 40, ${ember.life * glow * 0.4})`;
+        context.beginPath();
+        context.arc(ember.x, ember.y, ember.size * 1.4, 0, Math.PI * 2);
         context.fill();
         return true;
       });
