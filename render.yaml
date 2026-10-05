@@ -4,8 +4,8 @@ services:
     env: node
     region: singapore # or oregon, frankfurt, etc.
     plan: free # or starter
-    buildCommand: npm install && npm run build:server
-    startCommand: npm run start:server
+    buildCommand: pnpm install && pnpm run build:server
+    startCommand: pnpm run start:server
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
