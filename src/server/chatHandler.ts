@@ -4,6 +4,8 @@ import { MAX_MESSAGE_LENGTH, MAX_PAYLOAD_BYTES } from "../lib/constants";
 import { socketRoom, socketSession, rooms, addRoomMessage } from "./roomManager";
 import { checkRateLimit } from "./rateLimiter";
 
+import { incrementMetric } from "./metrics";
+
 export function sanitizeText(input: string): string {
   // Strip control characters & null bytes, keeping printable characters & emojis
   return input
@@ -112,6 +114,7 @@ export function registerChatHandlers(io: SocketIOServer, socket: Socket) {
 
       // 8. Broadcast ordered message to all room participants
       io.to(roomId).emit("chat:message", fullMessage);
+      incrementMetric.messagesSent();
     } catch (err) {
       console.error("[chatHandler] Unexpected error handling chat:send:", err);
       socket.emit("chat:error", {

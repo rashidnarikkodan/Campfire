@@ -10,6 +10,8 @@ import { registerChatHandlers } from "./src/server/chatHandler";
 import { registerSignalHandlers } from "./src/server/signalHandler";
 import { registerModerationHandlers } from "./src/server/moderationManager";
 import { checkIpRateLimit, registerIpConnection, unregisterIpConnection } from "./src/server/rateLimiter";
+import { logInfo, logWarn } from "./src/server/logger";
+import { getMetricsSnapshot, incrementMetric } from "./src/server/metrics";
 
 dotenv.config();
 
@@ -25,11 +27,21 @@ nextApp.prepare().then(() => {
   app.use(express.json({ limit: "10kb" }));
 
   app.get("/health", (_req, res) => {
-    res.json({ status: "ok", uptime: process.uptime(), ...getStats() });
+    const stats = getStats();
+    res.json({
+      status: "ok",
+      uptime: process.uptime(),
+      ...stats,
+    });
   });
 
   app.get("/api/stats", (_req, res) => {
     res.json(getStats());
+  });
+
+  app.get("/api/metrics", (_req, res) => {
+    const stats = getStats();
+    res.json(getMetricsSnapshot(stats.activeRooms, stats.activePeers));
   });
 
   const httpServer = createServer(app);
@@ -54,11 +66,13 @@ nextApp.prepare().then(() => {
 
     // 1. IP connection attempt rate limit (max 15 attempts per 60 seconds)
     if (!checkIpRateLimit(clientIp, "connection", { maxEvents: 15, windowMs: 60000 })) {
+      logWarn("WebSocket connection rejected: IP rate limit exceeded", { clientIp, socketId: socket.id });
       return nextMiddleware(new Error("Connection rate limit exceeded. Please try again later."));
     }
 
     // 2. Active simultaneous connections per IP limit (max 10)
     if (!registerIpConnection(clientIp)) {
+      logWarn("WebSocket connection rejected: Max IP connections reached", { clientIp, socketId: socket.id });
       return nextMiddleware(new Error("Maximum active connections reached for this IP."));
     }
 
@@ -67,12 +81,18 @@ nextApp.prepare().then(() => {
   });
 
   io.on("connection", (socket) => {
+    incrementMetric.wsConnections();
+    logInfo("WebSocket connection established", { socketId: socket.id, clientIp: socket.data.clientIp });
+
     registerRoomHandlers(io, socket);
     registerChatHandlers(io, socket);
     registerSignalHandlers(io, socket);
     registerModerationHandlers(io, socket);
 
-    socket.on("disconnect", () => {
+    socket.on("disconnect", (reason) => {
+      incrementMetric.wsDisconnects();
+      logInfo("WebSocket connection closed", { socketId: socket.id, reason });
+
       if (socket.data.clientIp) {
         unregisterIpConnection(socket.data.clientIp);
       }
@@ -86,21 +106,26 @@ nextApp.prepare().then(() => {
   });
 
   httpServer.listen(port, () => {
-    console.log(`🔥 Internet Campfire running at http://localhost:${port}`);
+    logInfo(`🔥 Internet Campfire running at http://localhost:${port}`);
   });
 
   const shutdown = (signal: string) => {
-    console.log(`\n🔥 ${signal} received. Shutting down Internet Campfire server gracefully...`);
+    logInfo(`🔥 ${signal} received. Initiating graceful shutdown...`);
+
+    // 1. Notify connected clients to initiate reconnect
+    io.emit("server:shutdown", { message: "Server is restarting. Please reconnect shortly." });
+
+    // 2. Stop accepting new connections & close servers
     io.close(() => {
-      console.log("WebSocket server closed.");
+      logInfo("WebSocket server closed.");
       httpServer.close(() => {
-        console.log("HTTP server closed.");
+        logInfo("HTTP server closed cleanly.");
         process.exit(0);
       });
     });
 
     setTimeout(() => {
-      console.warn("Forced shutdown after 10s timeout.");
+      logWarn("Forced shutdown after 10s timeout.");
       process.exit(1);
     }, 10000);
   };
