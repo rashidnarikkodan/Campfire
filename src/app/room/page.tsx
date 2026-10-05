@@ -169,15 +169,45 @@ function RoomContent() {
         </div>
       )}
 
-      {/* Full-Screen Ambient Campfire Canvas Layer */}
-      <div className="absolute inset-0 z-0 overflow-hidden">
-        <Campfire intensity={intensity} onStoke={stokeFire} fullScreen />
+      {/* Floating Top-Right Chat/Fire Switcher Button Below Header */}
+      <div className="fixed top-14 right-4 z-50 pointer-events-auto">
+        <button
+          onClick={() => handleTabChange(activeTab === "campfire" ? "chat" : "campfire")}
+          title={activeTab === "campfire" ? "Open Fleeting Chat" : "Return to The Fire"}
+          className={`relative flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition-all duration-300 active:scale-95 touch-manipulation backdrop-blur-xl border shadow-xl ${
+            activeTab === "chat"
+              ? "bg-flame text-forest-night border-white/30 shadow-flame/30"
+              : "bg-forest-night/80 text-flame border-flame/40 hover:bg-forest-night/95 hover:border-flame"
+          }`}
+        >
+          {activeTab === "campfire" ? (
+            <>
+              <MessageSquare size={14} />
+              <span>Chat</span>
+              {unreadChatCount > 0 && (
+                <span className="flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-emerald-500 px-1 text-[0.6rem] font-extrabold text-forest-night animate-bounce">
+                  {unreadChatCount}
+                </span>
+              )}
+            </>
+          ) : (
+            <>
+              <Flame size={14} className="animate-pulse" />
+              <span>Fire</span>
+            </>
+          )}
+        </button>
       </div>
 
-      {/* Main Viewport Workspace Layer */}
+      {/* Main Viewport Workspace Layer (VS Code Style Resizable Split) */}
       <div className="relative z-10 flex flex-1 min-h-0 w-full overflow-hidden">
-        {/* Campfire Stage Overlay: Peer 3D Ring & Floating Snippets */}
-        <section className="relative flex-1 h-full w-full overflow-hidden">
+        {/* Left Campfire Stage Section: Dynamic Width, Resizes canvas & 3D peer circle when chat opens */}
+        <section className="relative flex-1 h-full min-w-0 overflow-hidden transition-all duration-300 ease-in-out">
+          {/* Campfire Canvas Stage */}
+          <div className="absolute inset-0 z-0 overflow-hidden">
+            <Campfire intensity={intensity} onStoke={stokeFire} fullScreen />
+          </div>
+
           {/* Peer 3D Campfire Circle Overlay */}
           <PeerList socket={socket} roomId={roomId} onUpdateName={updateDisplayName} />
 
@@ -220,10 +250,12 @@ function RoomContent() {
           )}
         </section>
 
-        {/* Right Translucent Sliding Chat Drawer (Closed by default, slides from right) */}
+        {/* Right Section: VS Code Style Chat Panel (Pushes Left Stage, Does NOT Overlap Fire) */}
         <aside
-          className={`fixed top-12 right-0 bottom-0 z-40 w-full sm:w-[22rem] lg:w-[26rem] flex flex-col bg-forest-night/90 backdrop-blur-2xl border-l border-ash/15 shadow-2xl transition-transform duration-300 ease-in-out ${
-            activeTab === "chat" ? "translate-x-0" : "translate-x-full pointer-events-none"
+          className={`h-full shrink-0 border-l border-ash/15 bg-forest-night/95 backdrop-blur-2xl transition-all duration-300 ease-in-out overflow-hidden shadow-2xl z-20 ${
+            activeTab === "chat"
+              ? "w-full sm:w-[22rem] lg:w-[26rem] opacity-100"
+              : "w-0 opacity-0 pointer-events-none border-none"
           }`}
         >
           <ChatPanel socket={socket} roomId={roomId} onStoke={stokeFire} />

@@ -85,37 +85,6 @@ export default function RoomHeader({
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Universal Chat / Fire Navigation Switcher Button (Desktop & Mobile) */}
-          {onTabChange && (
-            <div className="shrink-0">
-              <button
-                onClick={() => onTabChange(activeTab === "campfire" ? "chat" : "campfire")}
-                title={activeTab === "campfire" ? "Open Fleeting Chat" : "Return to The Fire"}
-                className={`relative inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition active:scale-95 touch-manipulation border shadow-md min-h-[30px] ${
-                  activeTab === "chat"
-                    ? "bg-flame text-forest-night border-white/20 shadow-flame/30"
-                    : "bg-flame/20 text-flame border-flame/40 hover:bg-flame/30"
-                }`}
-              >
-                {activeTab === "campfire" ? (
-                  <>
-                    <MessageSquare size={13} />
-                    <span>Chat</span>
-                    {unreadChatCount > 0 && (
-                      <span className="flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-emerald-500 px-1 text-[0.6rem] font-extrabold text-forest-night animate-bounce">
-                        {unreadChatCount}
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <Flame size={14} className="animate-pulse" />
-                    <span>Fire</span>
-                  </>
-                )}
-              </button>
-            </div>
-          )}
 
           {onStoke && (
             <button
