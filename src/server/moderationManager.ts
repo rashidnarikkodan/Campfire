@@ -1,47 +1,89 @@
 import { Server as SocketIOServer, Socket } from "socket.io";
 import { REPORT_COOLDOWN_MS, REPORT_THRESHOLD } from "../lib/constants";
+import { socketRoom } from "./roomManager";
+import { checkRateLimit } from "./rateLimiter";
 
 const reportScores = new Map<string, Set<string>>();
 const cooldowns = new Map<string, number>();
 
-function getSessionId(socket: Socket) {
+// Periodic cleanup of expired cooldowns (every 10 minutes)
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, expiry] of cooldowns.entries()) {
+    if (now >= expiry) {
+      cooldowns.delete(key);
+    }
+  }
+}, 10 * 60 * 1000);
+
+function getClientKeys(socket: Socket): string[] {
+  const keys: string[] = [];
   const sessionId = socket.handshake.auth?.sessionId;
-  return typeof sessionId === "string" && sessionId.length > 0 ? sessionId : socket.id;
+  if (typeof sessionId === "string" && sessionId.trim().length > 0) {
+    keys.push(`session:${sessionId.trim()}`);
+  }
+  const ip = socket.handshake.address;
+  if (typeof ip === "string" && ip.length > 0) {
+    keys.push(`ip:${ip}`);
+  }
+  if (keys.length === 0) {
+    keys.push(`socket:${socket.id}`);
+  }
+  return keys;
 }
 
-export function getJoinCooldownRemaining(socket: Socket) {
-  const sessionId = getSessionId(socket);
-  const expiry = cooldowns.get(sessionId);
-  if (!expiry) return 0;
+export function getJoinCooldownRemaining(socket: Socket): number {
+  const keys = getClientKeys(socket);
+  const now = Date.now();
+  let maxRemaining = 0;
 
-  const remainingMs = expiry - Date.now();
-  if (remainingMs <= 0) {
-    cooldowns.delete(sessionId);
-    return 0;
+  for (const key of keys) {
+    const expiry = cooldowns.get(key);
+    if (expiry) {
+      const remainingMs = expiry - now;
+      if (remainingMs > 0) {
+        maxRemaining = Math.max(maxRemaining, remainingMs);
+      } else {
+        cooldowns.delete(key);
+      }
+    }
   }
 
-  return remainingMs;
+  return maxRemaining;
 }
 
 export function registerModerationHandlers(io: SocketIOServer, socket: Socket) {
-  socket.on("mod:report", ({ targetSocketId }: { targetSocketId: string }) => {
+  socket.on("mod:report", (data: { targetSocketId?: unknown }) => {
+    if (!checkRateLimit(socket.id, "mod:report", { maxEvents: 2, windowMs: 10000 })) return;
+    const targetSocketId = typeof data?.targetSocketId === "string" ? data.targetSocketId : undefined;
+
     if (!targetSocketId || targetSocketId === socket.id) return;
+
+    // Verify reporter and target are in the same room
+    const reporterRoom = socketRoom.get(socket.id);
+    const targetRoom = socketRoom.get(targetSocketId);
+    if (!reporterRoom || !targetRoom || reporterRoom !== targetRoom) return;
+
     const targetSocket = io.sockets.sockets.get(targetSocketId);
     if (!targetSocket) return;
 
-    const reporterSession = getSessionId(socket);
+    const reporterSession = getClientKeys(socket)[0];
     const reporters = reportScores.get(targetSocketId) ?? new Set<string>();
     reporters.add(reporterSession);
     reportScores.set(targetSocketId, reporters);
 
-    console.log(`[mod] ${socket.id} reported ${targetSocketId} (score: ${reporters.size})`);
+    console.log(`[mod] ${socket.id} reported ${targetSocketId} (score: ${reporters.size}/${REPORT_THRESHOLD})`);
 
     if (reporters.size >= REPORT_THRESHOLD) {
       io.to(targetSocketId).emit("mod:kicked", {
         reason: "You were removed by the community.",
       });
 
-      cooldowns.set(getSessionId(targetSocket), Date.now() + REPORT_COOLDOWN_MS);
+      const expiry = Date.now() + REPORT_COOLDOWN_MS;
+      for (const key of getClientKeys(targetSocket)) {
+        cooldowns.set(key, expiry);
+      }
+
       targetSocket.disconnect(true);
       reportScores.delete(targetSocketId);
     }

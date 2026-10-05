@@ -42,13 +42,15 @@ function generateRoomId(): string {
   return code;
 }
 
-function findOrCreateRoom(targetRoomId?: string, isPrivate: boolean = false): string {
-  if (targetRoomId) {
+import { checkRateLimit, cleanupRateLimits } from "./rateLimiter";
+
+function findOrCreateRoom(targetRoomId?: unknown, isPrivate: boolean = false): string {
+  if (typeof targetRoomId === "string" && targetRoomId.trim()) {
     const cleanId = targetRoomId.trim().toLowerCase().slice(0, 32);
     if (!rooms.has(cleanId)) {
       rooms.set(cleanId, {
         id: cleanId,
-        isPrivate,
+        isPrivate: Boolean(isPrivate),
         peers: new Map(),
         createdAt: Date.now(),
         stokeCount: 0,
@@ -68,7 +70,7 @@ function findOrCreateRoom(targetRoomId?: string, isPrivate: boolean = false): st
   const newId = generateRoomId();
   rooms.set(newId, {
     id: newId,
-    isPrivate,
+    isPrivate: Boolean(isPrivate),
     peers: new Map(),
     createdAt: Date.now(),
     stokeCount: 0,
@@ -80,8 +82,9 @@ function joinRoom(
   io: SocketIOServer,
   socket: Socket,
   roomId: string,
-  displayName?: string,
-  sessionId?: string
+  displayName?: unknown,
+  sessionId?: unknown,
+  isPrivate: boolean = false
 ) {
   const cooldownRemaining = getJoinCooldownRemaining(socket);
   if (cooldownRemaining > 0) {
@@ -92,7 +95,7 @@ function joinRoom(
   if (!rooms.has(roomId)) {
     rooms.set(roomId, {
       id: roomId,
-      isPrivate: false,
+      isPrivate: Boolean(isPrivate),
       peers: new Map(),
       createdAt: Date.now(),
       stokeCount: 0,
@@ -107,16 +110,13 @@ function joinRoom(
 
   leaveRoom(io, socket);
 
-  const effectiveSessionId =
-    sessionId ||
-    (typeof socket.handshake.auth?.sessionId === "string"
-      ? socket.handshake.auth.sessionId
-      : socket.id);
+  const rawSessionId = typeof sessionId === "string" && sessionId.trim() ? sessionId.trim() : null;
+  const handshakeSessionId = typeof socket.handshake.auth?.sessionId === "string" && socket.handshake.auth.sessionId.trim() ? socket.handshake.auth.sessionId.trim() : null;
 
-  const effectiveName =
-    displayName && displayName.trim().length > 0
-      ? displayName.trim().slice(0, 32)
-      : generateName(effectiveSessionId);
+  const effectiveSessionId = rawSessionId || handshakeSessionId || socket.id;
+
+  const rawName = typeof displayName === "string" ? displayName.trim() : "";
+  const effectiveName = rawName.length > 0 ? rawName.slice(0, 32) : generateName(effectiveSessionId);
 
   const peerInfo: PeerInfo = {
     socketId: socket.id,
@@ -195,9 +195,10 @@ function leaveRoom(io: SocketIOServer, socket: Socket) {
 export function registerRoomHandlers(io: SocketIOServer, socket: Socket) {
   socket.on(
     "room:join",
-    (data?: { roomId?: string; displayName?: string; sessionId?: string; isPrivate?: boolean }) => {
-      const targetRoomId = data?.roomId ? findOrCreateRoom(data.roomId, data?.isPrivate) : findOrCreateRoom(undefined, data?.isPrivate);
-      joinRoom(io, socket, targetRoomId, data?.displayName, data?.sessionId);
+    (data?: { roomId?: unknown; displayName?: unknown; sessionId?: unknown; isPrivate?: unknown }) => {
+      const isPrivate = Boolean(data?.isPrivate);
+      const targetRoomId = data?.roomId ? findOrCreateRoom(data.roomId, isPrivate) : findOrCreateRoom(undefined, isPrivate);
+      joinRoom(io, socket, targetRoomId, data?.displayName, data?.sessionId, isPrivate);
     }
   );
 
@@ -205,7 +206,9 @@ export function registerRoomHandlers(io: SocketIOServer, socket: Socket) {
     leaveRoom(io, socket);
   });
 
-  socket.on("room:update-name", ({ displayName }: { displayName: string }) => {
+  socket.on("room:update-name", (data: { displayName?: unknown }) => {
+    if (!checkRateLimit(socket.id, "update-name", { maxEvents: 3, windowMs: 10000 })) return;
+    const displayName = typeof data?.displayName === "string" ? data.displayName : "";
     const roomId = socketRoom.get(socket.id);
     if (!roomId) return;
     const room = rooms.get(roomId);
@@ -234,9 +237,11 @@ export function registerRoomHandlers(io: SocketIOServer, socket: Socket) {
     });
   });
 
-  socket.on("voice:speaking", ({ roomId, isSpeaking }: { roomId: string; isSpeaking: boolean }) => {
+  socket.on("voice:speaking", (data: { roomId?: unknown; isSpeaking?: unknown }) => {
+    const roomId = typeof data?.roomId === "string" ? data.roomId : undefined;
+    const isSpeaking = typeof data?.isSpeaking === "boolean" ? data.isSpeaking : false;
     const currentRoomId = socketRoom.get(socket.id);
-    if (roomId && currentRoomId === roomId && typeof isSpeaking === "boolean") {
+    if (roomId && currentRoomId === roomId) {
       const room = rooms.get(roomId);
       const peer = room?.peers.get(socket.id);
       if (peer) {
@@ -247,6 +252,7 @@ export function registerRoomHandlers(io: SocketIOServer, socket: Socket) {
   });
 
   socket.on("campfire:stoke", () => {
+    if (!checkRateLimit(socket.id, "stoke", { maxEvents: 5, windowMs: 5000 })) return;
     const roomId = socketRoom.get(socket.id);
     if (!roomId) return;
     const room = rooms.get(roomId);
@@ -264,7 +270,9 @@ export function registerRoomHandlers(io: SocketIOServer, socket: Socket) {
     });
   });
 
-  socket.on("chat:typing", ({ isTyping }: { isTyping: boolean }) => {
+  socket.on("chat:typing", (data: { isTyping?: unknown }) => {
+    if (!checkRateLimit(socket.id, "typing", { maxEvents: 10, windowMs: 5000 })) return;
+    const isTyping = Boolean(data?.isTyping);
     const roomId = socketRoom.get(socket.id);
     if (!roomId) return;
     const room = rooms.get(roomId);
@@ -273,12 +281,13 @@ export function registerRoomHandlers(io: SocketIOServer, socket: Socket) {
     socket.to(roomId).emit("chat:typing", {
       socketId: socket.id,
       displayName: peer?.displayName || "Someone",
-      isTyping: Boolean(isTyping),
+      isTyping,
     });
   });
 }
 
 export function handleDisconnect(io: SocketIOServer, socket: Socket) {
+  cleanupRateLimits(socket.id);
   const roomId = socketRoom.get(socket.id);
   if (!roomId) return;
 

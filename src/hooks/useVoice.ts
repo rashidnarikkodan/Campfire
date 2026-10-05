@@ -10,16 +10,32 @@ interface UseVoiceProps {
   roomId: string | null;
 }
 
-const ICE_SERVERS: RTCConfiguration = {
-  iceServers: [
+function getIceServers(): RTCConfiguration {
+  const defaultStun: RTCIceServer[] = [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
     { urls: "stun:stun2.l.google.com:19302" },
     { urls: "stun:stun3.l.google.com:19302" },
     { urls: "stun:stun4.l.google.com:19302" },
     { urls: "stun:global.stun.twilio.com:3478" },
-  ],
-};
+  ];
+
+  const turnUrls = process.env.NEXT_PUBLIC_TURN_URLS;
+  const turnUsername = process.env.NEXT_PUBLIC_TURN_USERNAME;
+  const turnCredential = process.env.NEXT_PUBLIC_TURN_CREDENTIAL;
+
+  if (turnUrls) {
+    const urls = turnUrls.split(",").map((u) => u.trim()).filter(Boolean);
+    if (urls.length > 0) {
+      const turnServer: RTCIceServer = { urls };
+      if (turnUsername) turnServer.username = turnUsername;
+      if (turnCredential) turnServer.credential = turnCredential;
+      return { iceServers: [...defaultStun, turnServer] };
+    }
+  }
+
+  return { iceServers: defaultStun };
+}
 
 export function useVoice({ socket, roomId }: UseVoiceProps) {
   const isSpeaking = useVoiceStore((s) => s.isSpeaking);
@@ -314,7 +330,7 @@ export function useVoice({ socket, roomId }: UseVoiceProps) {
       const existing = pcsRef.current.get(peerId);
       if (existing && existing.connectionState !== "closed") return existing;
 
-      const pc = new RTCPeerConnection(ICE_SERVERS);
+      const pc = new RTCPeerConnection(getIceServers());
       pcsRef.current.set(peerId, pc);
 
       const stream = localStreamRef.current;
