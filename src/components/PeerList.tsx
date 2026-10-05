@@ -153,20 +153,6 @@ export default function PeerList({ socket, roomId, onUpdateName }: PeerListProps
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
-          {/* Mic Toggle Button */}
-          <button
-            onClick={toggleMic}
-            title={isLiveMic ? "Mic is live - Click to mute" : "Mic is muted - Click to turn on or hold Spacebar"}
-            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.7rem] font-medium transition active:scale-95 touch-manipulation min-h-[28px] ${
-              isLiveMic
-                ? "bg-flame text-forest-night font-bold shadow-md shadow-flame/30 animate-pulse border border-white/20"
-                : "bg-ash/[0.06] text-smoke hover:text-ash hover:bg-ash/[0.12]"
-            }`}
-          >
-            {isLiveMic ? <Mic size={12} /> : <MicOff size={12} />}
-            <span>{isLiveMic ? "Live" : "Muted"}</span>
-          </button>
-
           {isEditingName ? (
             <div className="flex items-center gap-1">
               <input
@@ -285,6 +271,25 @@ export default function PeerList({ socket, roomId, onUpdateName }: PeerListProps
             </div>
           );
         })}
+      </div>
+
+      {/* Bottom Footer: Mic Control Button on Bottom Right */}
+      <div className="mt-2.5 pt-2 border-t border-ash/[0.06] flex items-center justify-between gap-2">
+        <span className="text-[0.68rem] text-smoke/70 hidden sm:inline truncate">
+          {isLiveMic ? "Mic is active" : "Mic is muted • Tap or hold Spacebar"}
+        </span>
+        <button
+          onClick={toggleMic}
+          title={isLiveMic ? "Mic is live - Click to mute" : "Mic is muted - Click to turn on or hold Spacebar"}
+          className={`ml-auto flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition active:scale-95 touch-manipulation ${
+            isLiveMic
+              ? "bg-flame text-forest-night shadow-md shadow-flame/30 animate-pulse border border-white/20"
+              : "bg-amber-500/20 text-flame hover:bg-flame/30 border border-flame/30 shadow-sm"
+          }`}
+        >
+          {isLiveMic ? <Mic size={14} /> : <MicOff size={14} />}
+          <span>{isLiveMic ? "Mic Live" : "Turn On Mic"}</span>
+        </button>
       </div>
     </section>
   );

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check, Copy, LogOut, Settings, Sparkles } from "lucide-react";
+import { Check, Copy, Flame, LogOut, MessageSquare, Settings, Sparkles } from "lucide-react";
 import AudioSettingsModal from "./AudioSettingsModal";
 import { useRoomStore } from "@/store/roomStore";
 import { useVoiceStore } from "@/store/voiceStore";
@@ -12,9 +12,19 @@ interface RoomHeaderProps {
   roomId: string;
   socket?: Socket | null;
   onStoke?: () => void;
+  activeTab?: "campfire" | "chat";
+  onTabChange?: (tab: "campfire" | "chat") => void;
+  unreadChatCount?: number;
 }
 
-export default function RoomHeader({ roomId, socket, onStoke }: RoomHeaderProps) {
+export default function RoomHeader({
+  roomId,
+  socket,
+  onStoke,
+  activeTab = "campfire",
+  onTabChange,
+  unreadChatCount = 0,
+}: RoomHeaderProps) {
   const [copied, setCopied] = useState(false);
   const stokeCount = useRoomStore((s) => s.stokeCount);
   const isSettingsOpen = useVoiceStore((s) => s.isSettingsOpen);
@@ -75,6 +85,34 @@ export default function RoomHeader({ roomId, socket, onStoke }: RoomHeaderProps)
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Mobile Navigation Button (Top-Right) */}
+          {onTabChange && (
+            <div className="md:hidden shrink-0">
+              {activeTab === "campfire" ? (
+                <button
+                  onClick={() => onTabChange("chat")}
+                  title="Open Chat"
+                  className="relative flex items-center justify-center h-8 w-8 rounded-full bg-flame/20 text-flame border border-flame/40 active:scale-95 transition touch-manipulation"
+                >
+                  <MessageSquare size={15} />
+                  {unreadChatCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-emerald-500 px-1 text-[0.6rem] font-extrabold text-forest-night animate-bounce">
+                      {unreadChatCount}
+                    </span>
+                  )}
+                </button>
+              ) : (
+                <button
+                  onClick={() => onTabChange("campfire")}
+                  title="Return to Campfire"
+                  className="flex items-center justify-center h-8 w-8 rounded-full bg-forest-night text-flame border border-flame/40 active:scale-95 transition touch-manipulation"
+                >
+                  <Flame size={16} className="animate-pulse" />
+                </button>
+              )}
+            </div>
+          )}
+
           {onStoke && (
             <button
               onClick={onStoke}
