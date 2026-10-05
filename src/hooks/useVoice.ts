@@ -482,6 +482,9 @@ export function useVoice({ socket, roomId }: UseVoiceProps) {
           try {
             if (pc.signalingState === "stable") {
               pc.restartIce();
+              if (pc.onnegotiationneeded) {
+                pc.onnegotiationneeded(new Event("negotiationneeded"));
+              }
             } else {
               removeConnection(peerId);
             }
@@ -510,6 +513,9 @@ export function useVoice({ socket, roomId }: UseVoiceProps) {
           try {
             if (pc.signalingState === "stable") {
               pc.restartIce();
+              if (pc.onnegotiationneeded) {
+                pc.onnegotiationneeded(new Event("negotiationneeded"));
+              }
             }
           } catch {
             removeConnection(peerId);
@@ -695,6 +701,8 @@ export function useVoice({ socket, roomId }: UseVoiceProps) {
         });
       } catch (err) {
         console.warn(`Signaling warning answering offer from ${fromSocketId}:`, err);
+      } finally {
+        ignoreOfferRef.current.set(fromSocketId, false);
       }
     };
 
@@ -707,13 +715,14 @@ export function useVoice({ socket, roomId }: UseVoiceProps) {
     }) => {
       const pc = pcsRef.current.get(fromSocketId);
       if (pc) {
-        if (ignoreOfferRef.current.get(fromSocketId)) return;
         if (pc.signalingState !== "have-local-offer") return;
         try {
           await pc.setRemoteDescription(new RTCSessionDescription(sdp));
           await flushIceCandidates(fromSocketId, pc);
         } catch (err) {
           console.warn(`Signaling warning handling answer from ${fromSocketId}:`, err);
+        } finally {
+          ignoreOfferRef.current.set(fromSocketId, false);
         }
       }
     };
