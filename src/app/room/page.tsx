@@ -177,11 +177,7 @@ function RoomContent() {
       {/* Main Viewport Workspace Layer */}
       <div className="relative z-10 flex flex-1 min-h-0 w-full overflow-hidden">
         {/* Campfire Stage Overlay: Peer 3D Ring & Floating Snippets */}
-        <section
-          className={`relative flex-1 h-full w-full overflow-hidden ${
-            activeTab === "chat" ? "hidden md:block" : "block"
-          }`}
-        >
+        <section className="relative flex-1 h-full w-full overflow-hidden">
           {/* Peer 3D Campfire Circle Overlay */}
           <PeerList socket={socket} roomId={roomId} onUpdateName={updateDisplayName} />
 
@@ -224,11 +220,11 @@ function RoomContent() {
           )}
         </section>
 
-        {/* Right Translucent Chat Panel Drawer */}
+        {/* Right Translucent Sliding Chat Drawer (Closed by default, slides from right) */}
         <aside
-          className={`min-h-0 ${
-            activeTab === "campfire" ? "hidden md:flex" : "flex"
-          } flex-col h-full w-full md:w-[22rem] lg:w-[26rem] shrink-0 border-l border-ash/10 bg-forest-night/50 backdrop-blur-2xl overflow-hidden shadow-2xl z-20`}
+          className={`fixed top-12 right-0 bottom-0 z-40 w-full sm:w-[22rem] lg:w-[26rem] flex flex-col bg-forest-night/90 backdrop-blur-2xl border-l border-ash/15 shadow-2xl transition-transform duration-300 ease-in-out ${
+            activeTab === "chat" ? "translate-x-0" : "translate-x-full pointer-events-none"
+          }`}
         >
           <ChatPanel socket={socket} roomId={roomId} onStoke={stokeFire} />
         </aside>

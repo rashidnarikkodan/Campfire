@@ -301,14 +301,13 @@ export default function PeerList({ socket, roomId, onUpdateName }: PeerListProps
           <button
             onClick={toggleMic}
             title={isLiveMic ? "Mic is live - Click to mute" : "Mic is muted - Click to turn on or hold Spacebar"}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition active:scale-95 touch-manipulation shadow-xl ${
+            className={`flex items-center gap-2 rounded-full px-4 py-4 text-xs font-bold transition active:scale-95 touch-manipulation shadow-xl ${
               isLiveMic
                 ? "bg-flame text-forest-night shadow-flame/30 animate-pulse border border-white/20"
                 : "bg-amber-500/20 text-flame hover:bg-flame/30 border border-flame/40 backdrop-blur-xl"
             }`}
           >
-            {isLiveMic ? <Mic size={14} /> : <MicOff size={14} />}
-            <span>{isLiveMic ? "Mic Live" : "Turn On Mic"}</span>
+            {isLiveMic ? <Mic size={16} /> : <MicOff size={16} />}
           </button>
         </div>
       </div>
