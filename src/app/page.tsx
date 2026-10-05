@@ -159,12 +159,12 @@ export default function HomePage() {
                     if (e.key === "Enter") handleSaveName();
                     if (e.key === "Escape") setIsEditing(false);
                   }}
-                  className="rounded bg-ash/10 px-2 py-1 text-xs text-ash focus:outline-none focus:ring-1 focus:ring-flame w-28 sm:w-36"
+                  className="campfire-input text-xs text-ash py-0.5 px-2.5 w-28 sm:w-36"
                   autoFocus
                 />
                 <button
                   onClick={handleSaveName}
-                  className="rounded bg-flame/20 px-2.5 py-1 text-xs font-semibold text-flame hover:bg-flame/30 touch-manipulation min-h-[30px]"
+                  className="rounded-lg bg-flame/20 px-2.5 py-1 text-xs font-semibold text-flame hover:bg-flame/30 touch-manipulation min-h-[30px]"
                 >
                   Save
                 </button>
@@ -212,7 +212,7 @@ export default function HomePage() {
           </div>
 
           {/* Join with Room Code input */}
-          <div className="mt-2 flex items-center gap-2 rounded-xl bg-forest-night/60 p-1.5 border border-ash/[0.08] max-w-full overflow-hidden">
+          <div className="mt-2 flex items-center gap-2 campfire-input p-1.5 max-w-full overflow-hidden">
             <input
               type="text"
               placeholder="Or enter room code (e.g. amber-hearth-102)"
@@ -223,11 +223,11 @@ export default function HomePage() {
                   window.location.assign(`/room?room=${encodeURIComponent(customRoomCode.trim())}`);
                 }
               }}
-              className="w-48 sm:w-72 bg-transparent px-3 py-1.5 text-xs text-ash placeholder:text-smoke/50 focus:outline-none shrink"
+              className="w-48 sm:w-72 bg-transparent px-3 py-1 text-xs text-ash placeholder:text-smoke/50 focus:outline-none shrink"
             />
             <Link
               href={customRoomCode.trim() ? `/room?room=${encodeURIComponent(customRoomCode.trim())}` : "#"}
-              className={`inline-flex items-center gap-1 rounded-lg bg-ash/[0.08] px-3 py-2 text-xs font-semibold text-ash hover:bg-flame/20 hover:text-flame transition touch-manipulation shrink-0 ${
+              className={`inline-flex items-center gap-1 rounded-lg bg-flame/20 px-3 py-2 text-xs font-semibold text-flame hover:bg-flame hover:text-forest-night transition touch-manipulation shrink-0 ${
                 !customRoomCode.trim() ? "pointer-events-none opacity-40" : ""
               }`}
             >

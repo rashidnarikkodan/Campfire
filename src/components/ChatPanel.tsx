@@ -149,7 +149,7 @@ export default function ChatPanel({ socket, roomId }: ChatPanelProps) {
 
       {/* Input Area */}
       <div className="p-2.5 shrink-0 bg-forest-night/60 border-t border-ash/[0.06]">
-        <div className="flex items-end gap-2 rounded-xl bg-forest-night/80 px-3 py-1.5 border border-ash/[0.1] focus-within:border-flame/50 transition">
+        <div className="campfire-input flex items-end gap-2 p-2">
           <textarea
             value={text}
             onChange={handleTextChange}
@@ -157,7 +157,7 @@ export default function ChatPanel({ socket, roomId }: ChatPanelProps) {
             placeholder={roomId ? "Share a thought..." : "Connecting..."}
             disabled={!roomId}
             rows={1}
-            className="scrollbar-none max-h-24 min-h-8 flex-1 resize-none bg-transparent py-1 text-xs leading-5 text-ash placeholder:text-smoke/50 focus:outline-none disabled:cursor-not-allowed"
+            className="scrollbar-none max-h-24 min-h-8 flex-1 resize-none bg-transparent py-0.5 text-xs leading-5 text-ash placeholder:text-smoke/50 focus:outline-none disabled:cursor-not-allowed"
           />
 
           <div className="flex items-center gap-2 shrink-0 pb-0.5">
@@ -173,9 +173,9 @@ export default function ChatPanel({ socket, roomId }: ChatPanelProps) {
               onClick={handleSend}
               disabled={!roomId || !text.trim()}
               aria-label="Send message"
-              className="grid h-9 w-9 place-items-center rounded-full bg-flame/20 text-flame hover:bg-flame hover:text-forest-night transition active:scale-95 disabled:pointer-events-none disabled:opacity-30 touch-manipulation"
+              className="grid h-8 w-8 place-items-center rounded-full bg-flame/20 text-flame hover:bg-flame hover:text-forest-night transition active:scale-95 disabled:pointer-events-none disabled:opacity-30 touch-manipulation"
             >
-              <Send size={14} />
+              <Send size={13} />
             </button>
           </div>
         </div>
