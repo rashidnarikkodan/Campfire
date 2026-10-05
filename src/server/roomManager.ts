@@ -426,115 +426,151 @@ export function handleDisconnect(io: SocketIOServer, socket: Socket) {
   reconnectTimers.set(sessionId, timer);
   socketRoom.delete(socket.id);
   socketSession.delete(socket.id);
+  cleanupRateLimits(socket.id);
 }
 
 export function registerRoomHandlers(io: SocketIOServer, socket: Socket) {
   socket.on(
     "room:join",
     (data?: { roomId?: unknown; displayName?: unknown; sessionId?: unknown; isPrivate?: unknown }) => {
-      const isPrivate = Boolean(data?.isPrivate);
-      const targetRoomId = data?.roomId ? findOrCreateRoom(data.roomId, isPrivate) : findOrCreateRoom(undefined, isPrivate);
-      joinRoom(io, socket, targetRoomId, data?.displayName, data?.sessionId, isPrivate);
+      try {
+        if (!checkRateLimit(socket.id, "room:join", { maxEvents: 5, windowMs: 5000 })) {
+          socket.emit("room:error", { code: "RATE_LIMITED", message: "Joining rooms too quickly." });
+          return;
+        }
+        const roomIdRaw = typeof data?.roomId === "string" ? data.roomId.trim().slice(0, 64) : undefined;
+        const isPrivate = Boolean(data?.isPrivate);
+        const targetRoomId = roomIdRaw ? findOrCreateRoom(roomIdRaw, isPrivate) : findOrCreateRoom(undefined, isPrivate);
+        joinRoom(io, socket, targetRoomId, data?.displayName, data?.sessionId, isPrivate);
+      } catch (err) {
+        console.error("[roomManager] Error in room:join handler:", err);
+        socket.emit("room:error", { code: "SERVER_ERROR", message: "Failed to join room." });
+      }
     }
   );
 
   socket.on("room:leave", () => {
-    leaveRoom(io, socket, true);
+    try {
+      if (!checkRateLimit(socket.id, "room:leave", { maxEvents: 5, windowMs: 5000 })) return;
+      leaveRoom(io, socket, true);
+    } catch (err) {
+      console.error("[roomManager] Error in room:leave handler:", err);
+    }
   });
 
   socket.on("room:update-name", (data: { displayName?: unknown }) => {
-    if (!checkRateLimit(socket.id, "update-name", { maxEvents: 3, windowMs: 10000 })) return;
-    const displayName = typeof data?.displayName === "string" ? data.displayName : "";
-    const roomId = socketRoom.get(socket.id);
-    const sessionId = socketSession.get(socket.id);
-    if (!roomId || !sessionId) return;
-    const room = rooms.get(roomId);
-    if (!room) return;
+    try {
+      if (!checkRateLimit(socket.id, "update-name", { maxEvents: 3, windowMs: 10000 })) {
+        socket.emit("room:error", { code: "RATE_LIMITED", message: "Updating name too frequently." });
+        return;
+      }
+      const displayName = typeof data?.displayName === "string" ? data.displayName : "";
+      const roomId = socketRoom.get(socket.id);
+      const sessionId = socketSession.get(socket.id);
+      if (!roomId || !sessionId) return;
+      const room = rooms.get(roomId);
+      if (!room) return;
 
-    const peer = room.peers.get(sessionId);
-    if (!peer) return;
+      const peer = room.peers.get(sessionId);
+      if (!peer) return;
 
-    const oldName = peer.displayName;
-    const newName = displayName.trim().slice(0, 32);
-    if (!newName || newName === oldName) return;
+      const oldName = peer.displayName;
+      const newName = displayName.trim().slice(0, 32);
+      if (!newName || newName === oldName) return;
 
-    peer.displayName = newName;
-    updateSessionName(sessionId, newName);
+      peer.displayName = newName;
+      updateSessionName(sessionId, newName);
 
-    io.to(roomId).emit("room:peer-updated", {
-      socketId: socket.id,
-      sessionId,
-      displayName: newName,
-    });
+      io.to(roomId).emit("room:peer-updated", {
+        socketId: socket.id,
+        sessionId,
+        displayName: newName,
+      });
 
-    const updateMsg = addRoomMessage(roomId, {
-      id: randomUUID(),
-      senderId: "system",
-      sessionId: "system",
-      senderName: "Campfire",
-      text: `${oldName} is now known as ${newName}.`,
-      timestamp: Date.now(),
-      isSystem: true,
-    });
-    if (updateMsg) {
-      io.to(roomId).emit("chat:message", updateMsg);
+      const updateMsg = addRoomMessage(roomId, {
+        id: randomUUID(),
+        senderId: "system",
+        sessionId: "system",
+        senderName: "Campfire",
+        text: `${oldName} is now known as ${newName}.`,
+        timestamp: Date.now(),
+        isSystem: true,
+      });
+      if (updateMsg) {
+        io.to(roomId).emit("chat:message", updateMsg);
+      }
+    } catch (err) {
+      console.error("[roomManager] Error in room:update-name handler:", err);
     }
   });
 
   socket.on("voice:speaking", (data: { roomId?: unknown; isSpeaking?: unknown }) => {
-    const roomId = typeof data?.roomId === "string" ? data.roomId : undefined;
-    const isSpeaking = typeof data?.isSpeaking === "boolean" ? data.isSpeaking : false;
-    const currentRoomId = socketRoom.get(socket.id);
-    const sessionId = socketSession.get(socket.id);
+    try {
+      if (!checkRateLimit(socket.id, "voice:speaking", { maxEvents: 20, windowMs: 5000 })) return;
+      const roomId = typeof data?.roomId === "string" ? data.roomId : undefined;
+      const isSpeaking = typeof data?.isSpeaking === "boolean" ? data.isSpeaking : false;
+      const currentRoomId = socketRoom.get(socket.id);
+      const sessionId = socketSession.get(socket.id);
 
-    if (roomId && currentRoomId === roomId && sessionId) {
-      const room = rooms.get(roomId);
-      const peer = room?.peers.get(sessionId);
-      if (peer) {
-        peer.isSpeaking = isSpeaking;
-        touchSession(sessionId);
+      if (roomId && currentRoomId === roomId && sessionId) {
+        const room = rooms.get(roomId);
+        const peer = room?.peers.get(sessionId);
+        if (peer) {
+          peer.isSpeaking = isSpeaking;
+          touchSession(sessionId);
+        }
+        socket.to(roomId).emit("voice:speaking", { socketId: socket.id, sessionId, isSpeaking });
       }
-      socket.to(roomId).emit("voice:speaking", { socketId: socket.id, sessionId, isSpeaking });
+    } catch (err) {
+      console.error("[roomManager] Error in voice:speaking handler:", err);
     }
   });
 
   socket.on("campfire:stoke", () => {
-    if (!checkRateLimit(socket.id, "stoke", { maxEvents: 5, windowMs: 5000 })) return;
-    const roomId = socketRoom.get(socket.id);
-    const sessionId = socketSession.get(socket.id);
-    if (!roomId || !sessionId) return;
-    const room = rooms.get(roomId);
-    if (!room) return;
+    try {
+      if (!checkRateLimit(socket.id, "stoke", { maxEvents: 5, windowMs: 5000 })) return;
+      const roomId = socketRoom.get(socket.id);
+      const sessionId = socketSession.get(socket.id);
+      if (!roomId || !sessionId) return;
+      const room = rooms.get(roomId);
+      if (!room) return;
 
-    const peer = room.peers.get(sessionId);
-    room.stokeCount = (room.stokeCount || 0) + 1;
-    room.lastStokedAt = Date.now();
-    touchSession(sessionId);
+      const peer = room.peers.get(sessionId);
+      room.stokeCount = (room.stokeCount || 0) + 1;
+      room.lastStokedAt = Date.now();
+      touchSession(sessionId);
 
-    io.to(roomId).emit("campfire:stoked", {
-      socketId: socket.id,
-      sessionId,
-      displayName: peer?.displayName || "Someone",
-      stokeCount: room.stokeCount,
-      timestamp: Date.now(),
-    });
+      io.to(roomId).emit("campfire:stoked", {
+        socketId: socket.id,
+        sessionId,
+        displayName: peer?.displayName || "Someone",
+        stokeCount: room.stokeCount,
+        timestamp: Date.now(),
+      });
+    } catch (err) {
+      console.error("[roomManager] Error in campfire:stoke handler:", err);
+    }
   });
 
   socket.on("chat:typing", (data: { isTyping?: unknown }) => {
-    if (!checkRateLimit(socket.id, "typing", { maxEvents: 10, windowMs: 5000 })) return;
-    const isTyping = Boolean(data?.isTyping);
-    const roomId = socketRoom.get(socket.id);
-    const sessionId = socketSession.get(socket.id);
-    if (!roomId || !sessionId) return;
-    const room = rooms.get(roomId);
-    const peer = room?.peers.get(sessionId);
+    try {
+      if (!checkRateLimit(socket.id, "typing", { maxEvents: 10, windowMs: 5000 })) return;
+      const isTyping = Boolean(data?.isTyping);
+      const roomId = socketRoom.get(socket.id);
+      const sessionId = socketSession.get(socket.id);
+      if (!roomId || !sessionId) return;
+      const room = rooms.get(roomId);
+      const peer = room?.peers.get(sessionId);
 
-    socket.to(roomId).emit("chat:typing", {
-      socketId: socket.id,
-      sessionId,
-      displayName: peer?.displayName || "Someone",
-      isTyping,
-    });
+      socket.to(roomId).emit("chat:typing", {
+        socketId: socket.id,
+        sessionId,
+        displayName: peer?.displayName || "Someone",
+        isTyping,
+      });
+    } catch (err) {
+      console.error("[roomManager] Error in chat:typing handler:", err);
+    }
   });
 }
 

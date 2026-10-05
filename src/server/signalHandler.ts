@@ -53,36 +53,66 @@ function isValidIceCandidate(candidate: unknown): boolean {
 
 export function registerSignalHandlers(io: SocketIOServer, socket: Socket) {
   socket.on("signal:offer", (payload: SignalPayload) => {
-    if (!checkRateLimit(socket.id, "signal:offer", { maxEvents: 20, windowMs: 2000 })) return;
-    const { targetSocketId, sdp } = payload || {};
-    if (!canSignal(socket, targetSocketId) || !isValidSdp(sdp)) return;
+    try {
+      if (!checkRateLimit(socket.id, "signal:offer", { maxEvents: 20, windowMs: 2000 })) {
+        socket.emit("signal:error", { code: "RATE_LIMITED", message: "Signaling rate limit exceeded." });
+        return;
+      }
+      const { targetSocketId, sdp } = payload || {};
+      if (!canSignal(socket, targetSocketId) || !isValidSdp(sdp)) {
+        socket.emit("signal:error", { code: "UNAUTHORIZED_SIGNAL", message: "Invalid target or SDP payload." });
+        return;
+      }
 
-    io.to(targetSocketId).emit("signal:offer", {
-      fromSocketId: socket.id,
-      sdp,
-    });
+      io.to(targetSocketId).emit("signal:offer", {
+        fromSocketId: socket.id,
+        sdp,
+      });
+    } catch (err) {
+      console.error("[signalHandler] Error handling signal:offer:", err);
+    }
   });
 
   socket.on("signal:answer", (payload: SignalPayload) => {
-    if (!checkRateLimit(socket.id, "signal:answer", { maxEvents: 20, windowMs: 2000 })) return;
-    const { targetSocketId, sdp } = payload || {};
-    if (!canSignal(socket, targetSocketId) || !isValidSdp(sdp)) return;
+    try {
+      if (!checkRateLimit(socket.id, "signal:answer", { maxEvents: 20, windowMs: 2000 })) {
+        socket.emit("signal:error", { code: "RATE_LIMITED", message: "Signaling rate limit exceeded." });
+        return;
+      }
+      const { targetSocketId, sdp } = payload || {};
+      if (!canSignal(socket, targetSocketId) || !isValidSdp(sdp)) {
+        socket.emit("signal:error", { code: "UNAUTHORIZED_SIGNAL", message: "Invalid target or SDP payload." });
+        return;
+      }
 
-    io.to(targetSocketId).emit("signal:answer", {
-      fromSocketId: socket.id,
-      sdp,
-    });
+      io.to(targetSocketId).emit("signal:answer", {
+        fromSocketId: socket.id,
+        sdp,
+      });
+    } catch (err) {
+      console.error("[signalHandler] Error handling signal:answer:", err);
+    }
   });
 
   socket.on("signal:ice-candidate", (payload: SignalPayload) => {
-    if (!checkRateLimit(socket.id, "signal:ice-candidate", { maxEvents: 60, windowMs: 2000 })) return;
-    const { targetSocketId, candidate } = payload || {};
-    if (!canSignal(socket, targetSocketId) || !isValidIceCandidate(candidate)) return;
+    try {
+      if (!checkRateLimit(socket.id, "signal:ice-candidate", { maxEvents: 60, windowMs: 2000 })) {
+        socket.emit("signal:error", { code: "RATE_LIMITED", message: "ICE candidate rate limit exceeded." });
+        return;
+      }
+      const { targetSocketId, candidate } = payload || {};
+      if (!canSignal(socket, targetSocketId) || !isValidIceCandidate(candidate)) {
+        socket.emit("signal:error", { code: "UNAUTHORIZED_SIGNAL", message: "Invalid target or candidate payload." });
+        return;
+      }
 
-    io.to(targetSocketId).emit("signal:ice-candidate", {
-      fromSocketId: socket.id,
-      candidate,
-    });
+      io.to(targetSocketId).emit("signal:ice-candidate", {
+        fromSocketId: socket.id,
+        candidate,
+      });
+    } catch (err) {
+      console.error("[signalHandler] Error handling signal:ice-candidate:", err);
+    }
   });
 }
 
