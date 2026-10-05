@@ -7,7 +7,7 @@ const reportScores = new Map<string, Set<string>>();
 const cooldowns = new Map<string, number>();
 
 // Periodic cleanup of expired cooldowns (every 10 minutes)
-setInterval(() => {
+const cleanupInterval = setInterval(() => {
   const now = Date.now();
   for (const [key, expiry] of cooldowns.entries()) {
     if (now >= expiry) {
@@ -15,6 +15,7 @@ setInterval(() => {
     }
   }
 }, 10 * 60 * 1000);
+if (cleanupInterval.unref) cleanupInterval.unref();
 
 function getClientKeys(socket: Socket): string[] {
   const keys: string[] = [];

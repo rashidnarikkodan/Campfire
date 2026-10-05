@@ -83,6 +83,7 @@ export default function PeerList({ socket, onUpdateName }: PeerListProps) {
       name: localName,
       mine: true,
       speaking: localSpeaking,
+      reconnecting: false,
       audioLevel: localSpeaking ? Math.min(localAudioLevel * 2, 1) : 0,
     },
     ...peers.map((peer) => ({
@@ -90,6 +91,7 @@ export default function PeerList({ socket, onUpdateName }: PeerListProps) {
       name: peer.displayName,
       mine: false,
       speaking: activeSpeakers.includes(peer.socketId) || peer.isSpeaking,
+      reconnecting: peer.presenceState === "RECONNECTING",
       audioLevel: activeSpeakers.includes(peer.socketId) || peer.isSpeaking ? 0.8 : 0,
     })),
   ];
@@ -184,6 +186,11 @@ export default function PeerList({ socket, onUpdateName }: PeerListProps) {
                 <span className="max-w-24 sm:max-w-28 truncate text-xs font-medium tracking-tight">
                   {person.name}
                   {person.mine && <span className="ml-1 text-flame text-[0.68rem] font-normal">(you)</span>}
+                  {person.reconnecting && (
+                    <span className="ml-1 text-amber-400 text-[0.65rem] italic font-normal">
+                      (reconnecting...)
+                    </span>
+                  )}
                 </span>
               </div>
 

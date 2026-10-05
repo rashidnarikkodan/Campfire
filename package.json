@@ -7,6 +7,7 @@
     "dev": "tsx watch server.ts",
     "build": "next build && tsc -p tsconfig.server.json",
     "start": "NODE_ENV=production node dist/server.js",
+    "test": "tsx --test test/phase2_lifecycle.test.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },

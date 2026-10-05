@@ -27,8 +27,8 @@ interface RoomState {
   addMessage: (msg: Message) => void;
   setPeers: (peers: PeerInfo[]) => void;
   addPeer: (peer: PeerInfo) => void;
-  updatePeer: (socketId: string, updates: Partial<PeerInfo>) => void;
-  removePeer: (socketId: string) => void;
+  updatePeer: (identifier: string, updates: Partial<PeerInfo>) => void;
+  removePeer: (identifier: string) => void;
   setRoomId: (id: string | null) => void;
   setTypingUser: (socketId: string, displayName: string, isTyping: boolean) => void;
   incrementStoke: (displayName: string) => void;
@@ -55,22 +55,24 @@ export const useRoomStore = create<RoomState>((set) => ({
 
   addPeer: (peer) =>
     set((s) => ({
-      peers: s.peers.some((p) => p.socketId === peer.socketId)
-        ? s.peers.map((p) => (p.socketId === peer.socketId ? peer : p))
+      peers: s.peers.some((p) => p.sessionId === peer.sessionId || p.socketId === peer.socketId)
+        ? s.peers.map((p) =>
+            p.sessionId === peer.sessionId || p.socketId === peer.socketId ? { ...p, ...peer } : p
+          )
         : [...s.peers, peer],
     })),
 
-  updatePeer: (socketId, updates) =>
+  updatePeer: (identifier, updates) =>
     set((s) => ({
       peers: s.peers.map((p) =>
-        p.socketId === socketId ? { ...p, ...updates } : p
+        p.sessionId === identifier || p.socketId === identifier ? { ...p, ...updates } : p
       ),
     })),
 
-  removePeer: (socketId) =>
+  removePeer: (identifier) =>
     set((s) => ({
-      peers: s.peers.filter((p) => p.socketId !== socketId),
-      typingUsers: s.typingUsers.filter((t) => t.socketId !== socketId),
+      peers: s.peers.filter((p) => p.sessionId !== identifier && p.socketId !== identifier),
+      typingUsers: s.typingUsers.filter((t) => t.socketId !== identifier),
     })),
 
   setRoomId: (id) => set({ roomId: id }),
