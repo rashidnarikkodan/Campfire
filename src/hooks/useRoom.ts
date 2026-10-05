@@ -4,7 +4,6 @@ import { useEffect, useCallback } from "react";
 import type { Socket } from "socket.io-client";
 import { useRoomStore } from "@/store/roomStore";
 import { useUserStore } from "@/store/userStore";
-import { ambientAudio } from "@/lib/ambientAudio";
 import type { PeerInfo } from "@/server/roomManager";
 
 export function useRoom({
@@ -127,7 +126,6 @@ export function useRoom({
     }) => {
       incrementStoke(displayName);
       setStokeCount(stokeCount);
-      ambientAudio.playStokeSound();
     };
 
     const onTyping = ({

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Flame, MessageSquare, Sparkles, X, Volume2 } from "lucide-react";
+import { Flame, MessageSquare, X, Volume2 } from "lucide-react";
 import { useFireIntensity } from "@/hooks/useFireIntensity";
 import { useRoom } from "@/hooks/useRoom";
 import { useSocket } from "@/hooks/useSocket";
@@ -14,7 +14,6 @@ import PeerList from "@/components/PeerList";
 import VoiceBar from "@/components/VoiceBar";
 import RoomHeader from "@/components/RoomHeader";
 import StarryNight from "@/components/StarryNight";
-import { ambientAudio } from "@/lib/ambientAudio";
 
 function RoomContent() {
   const searchParams = useSearchParams();
@@ -70,10 +69,9 @@ function RoomContent() {
     }
   };
 
-  // Unlock ambient sound & audio context on first interaction
+  // Unlock audio context on first interaction
   useEffect(() => {
     const handleFirstTouch = () => {
-      ambientAudio.start();
       ensureAudioContextActive();
       window.removeEventListener("click", handleFirstTouch);
       window.removeEventListener("keydown", handleFirstTouch);
@@ -142,64 +140,31 @@ function RoomContent() {
   return (
     <main
       onClick={ensureAudioContextActive}
-      className="relative flex h-[100dvh] max-h-[100dvh] w-full flex-col overflow-hidden bg-forest-night text-ash p-2 sm:p-4"
+      className="relative flex h-[100dvh] max-h-[100dvh] w-full flex-col overflow-hidden bg-forest-night text-ash"
     >
       <StarryNight />
 
-      {/* Top Header */}
-      <div className="relative z-20 shrink-0 mb-2">
-        <RoomHeader roomId={roomId} onStoke={stokeFire} />
-      </div>
+      {/* Sticky Top Header (flush to top with non-rounded top-left & top-right corners) */}
+      <RoomHeader roomId={roomId} socket={socket} onStoke={stokeFire} />
 
       {/* Browser Autoplay Blocked Banner */}
       {audioAutoplayBlocked && (
         <div
           onClick={ensureAudioContextActive}
-          className="relative z-30 mb-2 flex items-center justify-between gap-3 rounded-2xl bg-flame px-4 py-2.5 text-xs font-bold text-forest-night shadow-xl shadow-flame/30 cursor-pointer animate-bounce border border-white/20"
+          className="relative z-30 mx-2 mt-2 flex items-center justify-between gap-3 rounded-2xl bg-flame px-4 py-2 text-xs font-bold text-forest-night shadow-xl shadow-flame/30 cursor-pointer animate-bounce border border-white/20"
         >
           <div className="flex items-center gap-2">
             <Volume2 size={16} />
-            <span>Click anywhere to enable audio from strangers in this campfire!</span>
+            <span>Click anywhere to enable audio from strangers!</span>
           </div>
-          <span className="rounded-full bg-forest-night/20 px-2.5 py-1 text-[0.68rem] font-extrabold uppercase">
+          <span className="rounded-full bg-forest-night/20 px-2.5 py-0.5 text-[0.68rem] font-extrabold uppercase">
             Tap to Unmute
           </span>
         </div>
       )}
 
-      {/* Mobile Tab Switcher */}
-      <div className="relative z-20 flex md:hidden shrink-0 mb-2 rounded-xl bg-forest-night/80 p-1 backdrop-blur-md border border-ash/[0.08]">
-        <button
-          onClick={() => handleTabChange("campfire")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition active:scale-95 ${
-            activeTab === "campfire"
-              ? "bg-flame/20 text-flame border border-flame/30"
-              : "text-smoke hover:text-ash"
-          }`}
-        >
-          <Flame size={15} />
-          <span>The Fire</span>
-        </button>
-        <button
-          onClick={() => handleTabChange("chat")}
-          className={`relative flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition active:scale-95 ${
-            activeTab === "chat"
-              ? "bg-flame/20 text-flame border border-flame/30"
-              : "text-smoke hover:text-ash"
-          }`}
-        >
-          <MessageSquare size={15} />
-          <span>Chat</span>
-          {unreadChatCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-flame px-1 text-[0.65rem] font-bold text-forest-night animate-bounce">
-              {unreadChatCount}
-            </span>
-          )}
-        </button>
-      </div>
-
       {/* Main Responsive Grid Container */}
-      <div className="relative z-10 grid flex-1 min-h-0 gap-3 md:grid-cols-[1fr_24rem] lg:grid-cols-[1fr_26rem] overflow-hidden">
+      <div className="relative z-10 grid flex-1 min-h-0 gap-3 p-2 sm:p-3 md:grid-cols-[1fr_22rem] lg:grid-cols-[1fr_26rem] overflow-hidden">
         {/* Left Section: Campfire Visualizer, Peer Circle & Voice station */}
         <section
           className={`relative flex min-h-0 flex-col justify-between overflow-y-auto scrollbar-none ${
@@ -269,6 +234,32 @@ function RoomContent() {
         >
           <ChatPanel socket={socket} roomId={roomId} onStoke={stokeFire} />
         </aside>
+      </div>
+
+      {/* Sleek Small Floating Toggle Button for Mobile Navigation */}
+      <div className="fixed bottom-20 right-4 z-40 md:hidden">
+        {activeTab === "campfire" ? (
+          <button
+            onClick={() => handleTabChange("chat")}
+            title="Open Chat"
+            className="relative flex h-12 w-12 items-center justify-center rounded-full bg-flame text-forest-night shadow-xl shadow-flame/30 hover:scale-105 active:scale-95 transition border border-white/20 touch-manipulation"
+          >
+            <MessageSquare size={20} />
+            {unreadChatCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-emerald-500 px-1 text-[0.65rem] font-extrabold text-forest-night animate-bounce shadow-md">
+                {unreadChatCount}
+              </span>
+            )}
+          </button>
+        ) : (
+          <button
+            onClick={() => handleTabChange("campfire")}
+            title="Return to Campfire"
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-forest-night/90 text-flame shadow-xl shadow-flame/20 hover:scale-105 active:scale-95 transition border border-flame/40 backdrop-blur-md touch-manipulation"
+          >
+            <Flame size={22} className="animate-pulse" />
+          </button>
+        )}
       </div>
     </main>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MessageCircle, Send, Sparkles, Flame, Coffee, Trees } from "lucide-react";
+import { MessageCircle, Send, Sparkles } from "lucide-react";
 import type { Socket } from "socket.io-client";
 import { useChat } from "@/hooks/useChat";
 
@@ -20,14 +20,7 @@ function formatTime(timestamp: number) {
   }).format(timestamp);
 }
 
-const QUICK_REACTIONS = [
-  { icon: Flame, text: "🔥 Tosses dry cedar on the fire", label: "Wood" },
-  { icon: Coffee, text: "☕ Pours warm herbal tea", label: "Tea" },
-  { icon: Sparkles, text: "✨ Gazes quietly at the stars", label: "Stars" },
-  { icon: Trees, text: "🌲 Listens to the night wind in the pine", label: "Wind" },
-];
-
-export default function ChatPanel({ socket, roomId, onStoke }: ChatPanelProps) {
+export default function ChatPanel({ socket, roomId }: ChatPanelProps) {
   const { messages, typingUsers, chatError, sendMessage, sendTyping } = useChat({ socket, roomId });
   const [text, setText] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
@@ -43,13 +36,6 @@ export default function ChatPanel({ socket, roomId, onStoke }: ChatPanelProps) {
     sendMessage(trimmed);
     setText("");
     sendTyping(false);
-  };
-
-  const handleQuickReaction = (reactionText: string) => {
-    sendMessage(reactionText);
-    if (reactionText.includes("🔥") && onStoke) {
-      onStoke();
-    }
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -72,7 +58,7 @@ export default function ChatPanel({ socket, roomId, onStoke }: ChatPanelProps) {
   const otherTypingUsers = typingUsers.filter((u) => u.socketId !== socket?.id);
 
   return (
-    <div className="flex h-full min-h-[340px] w-full flex-col rounded-2xl bg-forest-night/60 backdrop-blur-xl border border-ash/[0.08] shadow-lg overflow-hidden">
+    <div className="flex h-full min-h-[320px] w-full flex-col rounded-2xl bg-forest-night/60 backdrop-blur-xl border border-ash/[0.08] shadow-lg overflow-hidden">
       {/* Header */}
       <header className="flex items-center justify-between border-b border-ash/[0.08] px-3.5 py-2.5 shrink-0 bg-forest-night/40">
         <div className="flex items-center gap-2">
@@ -97,7 +83,7 @@ export default function ChatPanel({ socket, roomId, onStoke }: ChatPanelProps) {
           <div className="flex h-full flex-col items-center justify-center p-4 text-center text-xs leading-6 text-smoke/70">
             <Sparkles size={24} className="mb-2 text-ember/50 animate-pulse" />
             <p className="font-medium text-ash/80">The hearth is quiet.</p>
-            <p>Type a note or share a quick campfire reaction below.</p>
+            <p>Send a message to start the conversation.</p>
           </div>
         ) : (
           messages.map((message) => {
@@ -159,25 +145,6 @@ export default function ChatPanel({ socket, roomId, onStoke }: ChatPanelProps) {
         )}
 
         <div ref={endRef} />
-      </div>
-
-      {/* Quick Campfire Reactions Chips */}
-      <div className="flex items-center gap-1.5 px-3 py-1.5 overflow-x-auto scrollbar-none border-t border-ash/[0.06] bg-forest-night/40 shrink-0">
-        {QUICK_REACTIONS.map((item) => {
-          const Icon = item.icon;
-          return (
-            <button
-              key={item.label}
-              onClick={() => handleQuickReaction(item.text)}
-              disabled={!roomId}
-              title={item.text}
-              className="inline-flex items-center gap-1 shrink-0 rounded-full bg-ash/[0.06] px-3 py-1.5 text-[0.7rem] font-medium text-smoke hover:text-ash hover:bg-ash/[0.12] transition active:scale-95 touch-manipulation disabled:opacity-40"
-            >
-              <Icon size={13} className="text-flame" />
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
       </div>
 
       {/* Input Area */}
