@@ -1,6 +1,6 @@
 import { Server as SocketIOServer, Socket } from "socket.io";
 import { REPORT_COOLDOWN_MS, REPORT_THRESHOLD } from "../lib/constants";
-import { socketRoom } from "./roomManager";
+import { socketRoom, socketSession } from "./roomManager";
 import { checkRateLimit } from "./rateLimiter";
 
 const reportScores = new Map<string, Set<string>>();
@@ -19,6 +19,10 @@ if (cleanupInterval.unref) cleanupInterval.unref();
 
 function getClientKeys(socket: Socket): string[] {
   const keys: string[] = [];
+  const sessionFromMap = socketSession.get(socket.id);
+  if (sessionFromMap) {
+    keys.push(`session:${sessionFromMap}`);
+  }
   const sessionId = socket.handshake.auth?.sessionId;
   if (typeof sessionId === "string" && sessionId.trim().length > 0) {
     keys.push(`session:${sessionId.trim()}`);
@@ -27,9 +31,7 @@ function getClientKeys(socket: Socket): string[] {
   if (typeof ip === "string" && ip.length > 0) {
     keys.push(`ip:${ip}`);
   }
-  if (keys.length === 0) {
-    keys.push(`socket:${socket.id}`);
-  }
+  keys.push(`socket:${socket.id}`);
   return keys;
 }
 
@@ -93,4 +95,9 @@ export function registerModerationHandlers(io: SocketIOServer, socket: Socket) {
   socket.on("disconnect", () => {
     reportScores.delete(socket.id);
   });
+}
+
+export function resetModerationForTesting(): void {
+  reportScores.clear();
+  cooldowns.clear();
 }

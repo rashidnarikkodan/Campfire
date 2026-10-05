@@ -9,6 +9,7 @@ import { registerRoomHandlers, handleDisconnect, getStats } from "./src/server/r
 import { registerChatHandlers } from "./src/server/chatHandler";
 import { registerSignalHandlers } from "./src/server/signalHandler";
 import { registerModerationHandlers } from "./src/server/moderationManager";
+import { checkIpRateLimit, registerIpConnection, unregisterIpConnection } from "./src/server/rateLimiter";
 
 dotenv.config();
 
@@ -21,7 +22,7 @@ const handle = nextApp.getRequestHandler();
 nextApp.prepare().then(() => {
   const app = express();
   app.use(cors());
-  app.use(express.json());
+  app.use(express.json({ limit: "10kb" }));
 
   app.get("/health", (_req, res) => {
     res.json({ status: "ok", uptime: process.uptime(), ...getStats() });
@@ -33,6 +34,10 @@ nextApp.prepare().then(() => {
 
   const httpServer = createServer(app);
 
+  // Slowloris & request timeout protection
+  httpServer.headersTimeout = 10000;
+  httpServer.requestTimeout = 15000;
+
   const io = new SocketIOServer(httpServer, {
     cors: {
       origin: "*",
@@ -40,6 +45,25 @@ nextApp.prepare().then(() => {
     },
     pingTimeout: 20000,
     pingInterval: 10000,
+    maxHttpBufferSize: 64 * 1024, // 64 KB max per WS packet payload to prevent memory exhaustion
+  });
+
+  // Socket connection authentication & IP rate limit middleware
+  io.use((socket, nextMiddleware) => {
+    const clientIp = (socket.handshake.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || socket.handshake.address;
+
+    // 1. IP connection attempt rate limit (max 15 attempts per 60 seconds)
+    if (!checkIpRateLimit(clientIp, "connection", { maxEvents: 15, windowMs: 60000 })) {
+      return nextMiddleware(new Error("Connection rate limit exceeded. Please try again later."));
+    }
+
+    // 2. Active simultaneous connections per IP limit (max 10)
+    if (!registerIpConnection(clientIp)) {
+      return nextMiddleware(new Error("Maximum active connections reached for this IP."));
+    }
+
+    socket.data.clientIp = clientIp;
+    nextMiddleware();
   });
 
   io.on("connection", (socket) => {
@@ -48,7 +72,10 @@ nextApp.prepare().then(() => {
     registerSignalHandlers(io, socket);
     registerModerationHandlers(io, socket);
 
-    socket.on("disconnect", (reason) => {
+    socket.on("disconnect", () => {
+      if (socket.data.clientIp) {
+        unregisterIpConnection(socket.data.clientIp);
+      }
       handleDisconnect(io, socket);
     });
   });
