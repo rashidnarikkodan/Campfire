@@ -20,7 +20,7 @@ export function useSocket() {
     if (!socketRef.current) {
       const socket = io(SOCKET_URL, {
         auth: { sessionId, displayName: displayName || undefined },
-        transports: ["websocket", "polling"],
+        transports: ["polling", "websocket"],
         reconnectionAttempts: 10, // Bounded retries
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000, // Exponential backoff up to 5s
