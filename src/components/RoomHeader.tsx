@@ -88,6 +88,34 @@ export default function RoomHeader({
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {onTabChange && (
+            <button
+              onClick={() => onTabChange(activeTab === "campfire" ? "chat" : "campfire")}
+              title={activeTab === "campfire" ? "Open Fleeting Chat" : "Return to The Fire"}
+              className={`relative inline-flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-1 text-xs font-semibold transition active:scale-95 border touch-manipulation min-h-[32px] ${
+                activeTab === "chat"
+                  ? "bg-flame text-forest-night border-flame shadow-md shadow-flame/30 font-bold"
+                  : "bg-ash/[0.06] text-flame border-flame/30 hover:bg-ash/[0.12]"
+              }`}
+            >
+              {activeTab === "campfire" ? (
+                <>
+                  <MessageSquare size={13} />
+                  <span className="hidden xs:inline">Chat</span>
+                  {unreadChatCount > 0 && (
+                    <span className="rounded-full bg-emerald-500 px-1.5 py-0.2 text-[0.65rem] font-extrabold text-forest-night animate-bounce shadow-sm">
+                      {unreadChatCount}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Flame size={13} className="animate-pulse" />
+                  <span className="hidden xs:inline">Fire</span>
+                </>
+              )}
+            </button>
+          )}
 
           {onStoke && (
             <button
