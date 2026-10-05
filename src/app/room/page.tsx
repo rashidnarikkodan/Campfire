@@ -169,28 +169,32 @@ function RoomContent() {
         </div>
       )}
 
-      {/* Main Responsive Grid Container */}
-      <div className="relative z-10 grid flex-1 min-h-0 gap-3 p-2 sm:p-3 md:grid-cols-[1fr_22rem] lg:grid-cols-[1fr_26rem] overflow-hidden">
-        {/* Left Section: Full-Screen Campfire Visualizer, Peer Circle */}
+      {/* Full-Screen Ambient Campfire Canvas Layer */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <Campfire intensity={intensity} onStoke={stokeFire} fullScreen />
+      </div>
+
+      {/* Main Viewport Workspace Layer */}
+      <div className="relative z-10 flex flex-1 min-h-0 w-full overflow-hidden">
+        {/* Campfire Stage Overlay: Peer 3D Ring & Floating Snippets */}
         <section
-          className={`relative flex min-h-0 flex-col justify-between overflow-hidden ${
-            activeTab === "chat" ? "hidden md:flex" : "flex"
+          className={`relative flex-1 h-full w-full overflow-hidden ${
+            activeTab === "chat" ? "hidden md:block" : "block"
           }`}
         >
-          {/* Campfire Visualizer Stage (Full-Screen dynamic canvas) */}
-          <div className="relative flex-1 w-full min-h-[260px] overflow-hidden rounded-2xl">
-            <Campfire intensity={intensity} onStoke={stokeFire} fullScreen />
+          {/* Peer 3D Campfire Circle Overlay */}
+          <PeerList socket={socket} roomId={roomId} onUpdateName={updateDisplayName} />
 
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-1 text-center pointer-events-none">
-              <p className="text-[0.65rem] sm:text-[0.68rem] uppercase tracking-[0.22em] text-smoke/70 bg-forest-night/40 px-3 py-1 rounded-full backdrop-blur-md border border-ash/[0.06]">
-                Tap fire to throw embers & feed sparks
-              </p>
-            </div>
+          {/* Tap Fire Prompt Hint at Top Center */}
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+            <p className="text-[0.65rem] sm:text-[0.68rem] uppercase tracking-[0.22em] text-smoke/70 bg-forest-night/60 px-3.5 py-1 rounded-full backdrop-blur-md border border-ash/10 shadow-lg">
+              Tap fire to throw embers & feed sparks
+            </p>
           </div>
 
-          {/* Floating Live Chat Message Snippet (Visible on 'The Fire' screen) */}
+          {/* Floating Live Chat Message Snippet */}
           {floatingMessage && (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 w-[92%] sm:w-[85%] max-w-md animate-fade-up">
+            <div className="absolute top-14 left-1/2 -translate-x-1/2 z-30 w-[92%] sm:w-[85%] max-w-md animate-fade-up">
               <div
                 onClick={() => handleTabChange("chat")}
                 className="group flex items-center justify-between gap-2.5 rounded-full bg-forest-night/90 px-3.5 py-2 backdrop-blur-xl border border-flame/40 shadow-xl shadow-flame/15 cursor-pointer active:scale-95 transition"
@@ -218,18 +222,13 @@ function RoomContent() {
               </div>
             </div>
           )}
-
-          {/* Bottom Dock: Peer Circle */}
-          <div className="relative z-20 w-full shrink-0 pt-2 pb-1">
-            <PeerList socket={socket} roomId={roomId} onUpdateName={updateDisplayName} />
-          </div>
         </section>
 
-        {/* Right Section: Chat Drawer */}
+        {/* Right Translucent Chat Panel Drawer */}
         <aside
           className={`min-h-0 ${
             activeTab === "campfire" ? "hidden md:flex" : "flex"
-          } flex-col h-full overflow-hidden`}
+          } flex-col h-full w-full md:w-[22rem] lg:w-[26rem] shrink-0 border-l border-ash/10 bg-forest-night/50 backdrop-blur-2xl overflow-hidden shadow-2xl z-20`}
         >
           <ChatPanel socket={socket} roomId={roomId} onStoke={stokeFire} />
         </aside>

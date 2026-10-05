@@ -143,18 +143,121 @@ export default function PeerList({ socket, roomId, onUpdateName }: PeerListProps
   const isLiveMic = localSpeaking || handsFreeMode;
 
   return (
-    <section className="rounded-2xl bg-forest-night/60 p-3 sm:p-3.5 backdrop-blur-xl border border-ash/[0.08] shadow-lg">
-      <div className="mb-2.5 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 text-xs text-smoke">
-          <Flame size={14} className="text-ember shrink-0" />
+    <div className="relative w-full h-full min-h-full pointer-events-none select-none">
+      {/* 3D Campfire Ring of People Pills surrounding the hearth */}
+      <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+        {people.map((person, index) => {
+          const hue = avatarHue(person.name);
+          const isReported = reportedPeer === person.id;
+
+          // Calculate ring angle & offsets around the campfire base (Center: 50%, 65%)
+          let angleRad = Math.PI / 2; // Default 90 deg (bottom center) if 1 person
+          if (total > 1) {
+            const startAngle = (165 * Math.PI) / 180;
+            const endAngle = (15 * Math.PI) / 180;
+            const step = (endAngle - startAngle) / (total - 1);
+            angleRad = startAngle + index * step;
+          }
+
+          // Ellipse radii: Rx horizontal spread, Ry depth perspective
+          const cos = Math.cos(angleRad);
+          const sin = Math.sin(angleRad);
+
+          return (
+            <div
+              key={person.id}
+              className="absolute pointer-events-auto transition-all duration-500 ease-out transform -translate-x-1/2 -translate-y-1/2"
+              style={{
+                left: `calc(50% + ${cos * -1} * min(36vw, 360px))`,
+                top: `calc(65% + ${sin} * min(18vh, 120px))`,
+                zIndex: Math.round(10 + sin * 10),
+              }}
+            >
+              <div
+                className={`group relative flex items-center gap-2 rounded-full px-3 py-1.5 backdrop-blur-xl border transition-all duration-300 shadow-xl ${
+                  person.speaking
+                    ? "bg-amber-950/80 border-flame text-ash shadow-flame/30 scale-105"
+                    : "bg-forest-night/80 border-ash/15 text-ash/90 hover:bg-forest-night/95 hover:border-flame/40"
+                }`}
+              >
+                {/* Avatar circle with speaking pulse */}
+                <div className="relative flex items-center justify-center shrink-0">
+                  {person.speaking && (
+                    <div
+                      className="absolute -inset-1 rounded-full bg-flame/50 animate-ping"
+                      style={{ animationDuration: "1.5s" }}
+                    />
+                  )}
+                  <span
+                    className="relative grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold text-white shadow-inner"
+                    style={{
+                      backgroundColor: `hsl(${hue}, 45%, 32%)`,
+                      border: `1.8px solid hsl(${hue}, 65%, 58%)`,
+                    }}
+                  >
+                    {initials(person.name)}
+                  </span>
+                </div>
+
+                {/* Name & status */}
+                <div className="flex flex-col min-w-0">
+                  <span className="max-w-28 sm:max-w-36 truncate text-xs font-semibold tracking-tight">
+                    {person.name}
+                    {person.mine && <span className="ml-1 text-flame text-[0.68rem] font-normal">(you)</span>}
+                    {person.reconnecting && (
+                      <span className="ml-1 text-amber-400 text-[0.65rem] italic font-normal">
+                        (reconnecting...)
+                      </span>
+                    )}
+                  </span>
+                </div>
+
+                {/* Speaking Voice Waves */}
+                {person.speaking ? (
+                  <div className="ml-0.5 flex h-4 items-center gap-0.5" aria-label="Speaking">
+                    <span className="h-2 w-0.8 rounded-full bg-flame animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="h-3.5 w-0.8 rounded-full bg-flame animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <span className="h-2.5 w-0.8 rounded-full bg-flame animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </div>
+                ) : null}
+
+                {/* Report button */}
+                {!person.mine && (
+                  <button
+                    onClick={() => handleReport(person.id, person.name)}
+                    title={`Report ${person.name}`}
+                    aria-label={`Report ${person.name}`}
+                    className="grid h-5 w-5 place-items-center rounded-full text-smoke/50 opacity-80 sm:opacity-0 group-hover:opacity-100 transition hover:bg-red-950/50 hover:text-red-400 ml-0.5 touch-manipulation"
+                  >
+                    <AlertTriangle size={11} />
+                  </button>
+                )}
+
+                {isReported && (
+                  <span className="absolute -top-6 left-1/2 -translate-x-1/2 rounded bg-red-900/90 px-1.5 py-0.5 text-[0.65rem] text-red-200">
+                    Reported
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Floating Bottom Control Bar */}
+      <div className="absolute bottom-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-none">
+        {/* Left: Stranger Count Badge */}
+        <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-forest-night/80 px-3.5 py-1.5 backdrop-blur-xl border border-ash/15 text-xs text-smoke shadow-lg">
+          <Flame size={14} className="text-flame animate-pulse shrink-0" />
           <span className="truncate">
-            <strong className="text-ash font-semibold">{total}</strong> {total === 1 ? "stranger" : "strangers"} by hearth
+            <strong className="text-ash font-bold">{total}</strong> {total === 1 ? "stranger" : "strangers"} by hearth
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        {/* Right: Controls & Mic Toggle Button */}
+        <div className="pointer-events-auto flex items-center gap-2">
           {isEditingName ? (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5 rounded-2xl bg-forest-night/80 p-1.5 backdrop-blur-xl border border-ash/15 shadow-lg">
               <input
                 type="text"
                 value={editingText}
@@ -163,134 +266,52 @@ export default function PeerList({ socket, roomId, onUpdateName }: PeerListProps
                   if (e.key === "Enter") handleSaveName();
                   if (e.key === "Escape") setIsEditingName(false);
                 }}
-                className="campfire-input text-xs text-ash py-0.5 px-2 w-24 sm:w-32"
+                className="campfire-input text-xs text-ash py-1 px-2.5 w-28 sm:w-36"
                 autoFocus
               />
               <button
                 onClick={handleSaveName}
-                className="rounded-lg bg-flame/20 px-2.5 py-1 text-xs font-semibold text-flame hover:bg-flame/30 active:scale-95 touch-manipulation min-h-[28px]"
+                className="rounded-xl bg-flame/20 px-3 py-1.5 text-xs font-bold text-flame hover:bg-flame/30 active:scale-95 touch-manipulation min-h-[30px]"
               >
                 Save
               </button>
             </div>
           ) : (
-            <>
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={handleStartEdit}
                 title="Edit your alias"
-                className="inline-flex items-center gap-1 rounded-lg bg-ash/[0.06] px-2.5 py-1 text-[0.7rem] font-medium text-smoke hover:text-ash hover:bg-ash/[0.12] transition active:scale-95 touch-manipulation min-h-[28px]"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-forest-night/80 px-3 py-1.5 text-xs font-medium text-smoke hover:text-ash hover:bg-forest-night/95 backdrop-blur-xl border border-ash/15 transition active:scale-95 touch-manipulation min-h-[32px] shadow-lg"
               >
-                <Edit3 size={11} />
+                <Edit3 size={12} />
                 <span>Rename</span>
               </button>
               <button
                 onClick={handleRollName}
                 title="Generate new nature alias"
                 aria-label="Generate new alias"
-                className="grid h-7 w-7 place-items-center rounded-lg bg-ash/[0.06] text-smoke hover:text-ash hover:bg-ash/[0.12] transition active:scale-95 touch-manipulation"
+                className="grid h-8 w-8 place-items-center rounded-xl bg-forest-night/80 text-smoke hover:text-ash hover:bg-forest-night/95 backdrop-blur-xl border border-ash/15 transition active:scale-95 touch-manipulation shadow-lg"
               >
-                <RefreshCw size={11} />
+                <RefreshCw size={12} />
               </button>
-            </>
+            </div>
           )}
+
+          {/* Mic Control Button at Bottom Right */}
+          <button
+            onClick={toggleMic}
+            title={isLiveMic ? "Mic is live - Click to mute" : "Mic is muted - Click to turn on or hold Spacebar"}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition active:scale-95 touch-manipulation shadow-xl ${
+              isLiveMic
+                ? "bg-flame text-forest-night shadow-flame/30 animate-pulse border border-white/20"
+                : "bg-amber-500/20 text-flame hover:bg-flame/30 border border-flame/40 backdrop-blur-xl"
+            }`}
+          >
+            {isLiveMic ? <Mic size={14} /> : <MicOff size={14} />}
+            <span>{isLiveMic ? "Mic Live" : "Turn On Mic"}</span>
+          </button>
         </div>
       </div>
-
-      <div className="scrollbar-none flex flex-wrap gap-1.5 sm:gap-2 max-h-32 overflow-y-auto pt-0.5">
-        {people.map((person) => {
-          const hue = avatarHue(person.name);
-          const isReported = reportedPeer === person.id;
-
-          return (
-            <div
-              key={person.id}
-              className={`group relative flex items-center gap-2 rounded-full px-2.5 py-1.5 transition-all duration-300 border ${
-                person.speaking
-                  ? "bg-amber-950/50 border-flame/50 text-ash shadow-md shadow-flame/20"
-                  : "bg-ash/[0.05] border-ash/[0.06] text-ash/85 hover:bg-ash/[0.08]"
-              }`}
-            >
-              {/* Avatar circle with speaking pulse */}
-              <div className="relative flex items-center justify-center shrink-0">
-                {person.speaking && (
-                  <div
-                    className="absolute -inset-1 rounded-full bg-flame/40 animate-ping"
-                    style={{ animationDuration: "1.6s" }}
-                  />
-                )}
-                <span
-                  className="relative grid h-6 w-6 sm:h-7 sm:w-7 shrink-0 place-items-center rounded-full text-[0.65rem] sm:text-[0.68rem] font-bold text-white shadow-inner"
-                  style={{
-                    backgroundColor: `hsl(${hue}, 42%, 30%)`,
-                    border: `1.5px solid hsl(${hue}, 60%, 55%)`,
-                  }}
-                >
-                  {initials(person.name)}
-                </span>
-              </div>
-
-              {/* Name & status */}
-              <div className="flex flex-col min-w-0">
-                <span className="max-w-24 sm:max-w-28 truncate text-xs font-medium tracking-tight">
-                  {person.name}
-                  {person.mine && <span className="ml-1 text-flame text-[0.68rem] font-normal">(you)</span>}
-                  {person.reconnecting && (
-                    <span className="ml-1 text-amber-400 text-[0.65rem] italic font-normal">
-                      (reconnecting...)
-                    </span>
-                  )}
-                </span>
-              </div>
-
-              {/* Speaking Voice Waves */}
-              {person.speaking ? (
-                <div className="ml-0.5 flex h-4 items-center gap-0.5" aria-label="Speaking">
-                  <span className="h-2 w-0.8 rounded-full bg-flame animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="h-3.5 w-0.8 rounded-full bg-flame animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="h-2.5 w-0.8 rounded-full bg-flame animate-bounce" style={{ animationDelay: "300ms" }} />
-                </div>
-              ) : null}
-
-              {/* Report button */}
-              {!person.mine && (
-                <button
-                  onClick={() => handleReport(person.id, person.name)}
-                  title={`Report ${person.name}`}
-                  aria-label={`Report ${person.name}`}
-                  className="grid h-5 w-5 place-items-center rounded-full text-smoke/50 opacity-80 sm:opacity-0 group-hover:opacity-100 transition hover:bg-red-950/50 hover:text-red-400 ml-0.5 touch-manipulation"
-                >
-                  <AlertTriangle size={11} />
-                </button>
-              )}
-
-              {isReported && (
-                <span className="absolute -top-6 left-1/2 -translate-x-1/2 rounded bg-red-900/90 px-1.5 py-0.5 text-[0.65rem] text-red-200">
-                  Reported
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Bottom Footer: Mic Control Button on Bottom Right */}
-      <div className="mt-2.5 pt-2 border-t border-ash/[0.06] flex items-center justify-between gap-2">
-        <span className="text-[0.68rem] text-smoke/70 hidden sm:inline truncate">
-          {isLiveMic ? "Mic is active" : "Mic is muted • Tap or hold Spacebar"}
-        </span>
-        <button
-          onClick={toggleMic}
-          title={isLiveMic ? "Mic is live - Click to mute" : "Mic is muted - Click to turn on or hold Spacebar"}
-          className={`ml-auto flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition active:scale-95 touch-manipulation ${
-            isLiveMic
-              ? "bg-flame text-forest-night shadow-md shadow-flame/30 animate-pulse border border-white/20"
-              : "bg-amber-500/20 text-flame hover:bg-flame/30 border border-flame/30 shadow-sm"
-          }`}
-        >
-          {isLiveMic ? <Mic size={14} /> : <MicOff size={14} />}
-          <span>{isLiveMic ? "Mic Live" : "Turn On Mic"}</span>
-        </button>
-      </div>
-    </section>
+    </div>
   );
 }
