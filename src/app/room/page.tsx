@@ -164,9 +164,6 @@ function RoomContent() {
             <Volume2 size={16} />
             <span>Click anywhere to enable audio from strangers!</span>
           </div>
-          <span className="rounded-full bg-forest-night/20 px-2.5 py-0.5 text-[0.68rem] font-extrabold uppercase">
-            Tap to Unmute
-          </span>
         </div>
       )}
 
@@ -175,48 +172,15 @@ function RoomContent() {
         <Campfire intensity={intensity} onStoke={stokeFire} fullScreen />
       </div>
 
-      {/* Circular Floating Chat Toggle Button at Bottom-Right */}
-      <div className="fixed bottom-6 right-6 z-50 pointer-events-auto">
-        <button
-          onClick={() => handleTabChange(activeTab === "campfire" ? "chat" : "campfire")}
-          title={activeTab === "campfire" ? "Open Fleeting Chat" : "Return to The Fire"}
-          className={`relative grid h-14 w-14 place-items-center rounded-full transition-all duration-300 active:scale-90 touch-manipulation shadow-2xl backdrop-blur-2xl ${
-            activeTab === "chat"
-              ? "bg-flame text-forest-night border-2 border-white/40 shadow-flame/40 scale-105"
-              : "bg-forest-night/90 text-flame hover:bg-forest-night border border-flame/40"
-          }`}
-        >
-          {activeTab === "campfire" ? (
-            <>
-              <MessageSquare size={22} />
-              {unreadChatCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-emerald-500 px-1 text-[0.65rem] font-extrabold text-forest-night animate-bounce shadow-md">
-                  {unreadChatCount}
-                </span>
-              )}
-            </>
-          ) : (
-            <>
-              <span className="hidden sm:inline">
-                <X size={22} />
-              </span>
-              <span className="inline sm:hidden">
-                <Flame size={22} className="animate-pulse" />
-              </span>
-            </>
-          )}
-        </button>
-      </div>
-
       {/* Main Viewport Workspace Layer */}
       <div className="relative z-10 flex flex-1 min-h-0 w-full overflow-hidden">
-        {/* Left Campfire Stage Section */}
+        {/* Campfire Stage Overlay: Peer 3D Ring & Floating Snippets */}
         <section
           className={`relative flex-1 h-full w-full overflow-hidden transition-all duration-300 ease-in-out ${
-            activeTab === "chat" ? "md:pr-[22rem] lg:pr-[26rem]" : "pr-0"
+            activeTab === "chat" ? "hidden md:block md:pr-[22rem] lg:pr-[26rem]" : "block pr-0"
           }`}
         >
-          {/* Peer 3D Campfire Circle Overlay */}
+          {/* Peer 3D Campfire Circle Overlay & Mic Control Dock */}
           <PeerList socket={socket} roomId={roomId} onUpdateName={updateDisplayName} />
 
           {/* Floating Live Chat Message Snippet */}
@@ -251,10 +215,12 @@ function RoomContent() {
           )}
         </section>
 
-        {/* Right Section: Sliding Translucent Glassmorphism Chat Panel */}
+        {/* Right Translucent Chat Panel Drawer (Clean, Zero Overlaps) */}
         <aside
-          className={`fixed top-12 right-0 bottom-0 z-40 w-full sm:w-[22rem] lg:w-[26rem] flex flex-col bg-forest-night/90 backdrop-blur-2xl border-l border-ash/15 shadow-2xl transition-transform duration-300 ease-in-out ${
-            activeTab === "chat" ? "translate-x-0" : "translate-x-full pointer-events-none"
+          className={`h-full z-40 transition-all duration-300 ease-in-out overflow-hidden flex flex-col bg-forest-night/90 backdrop-blur-2xl border-l border-ash/15 shadow-2xl ${
+            activeTab === "chat"
+              ? "w-full md:w-[22rem] lg:w-[26rem] opacity-100"
+              : "w-0 opacity-0 pointer-events-none border-none"
           }`}
         >
           <ChatPanel socket={socket} roomId={roomId} onStoke={stokeFire} />
