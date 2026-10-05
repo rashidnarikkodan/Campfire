@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import ClientInit from "@/components/ClientInit";
+import { Analytics } from "@vercel/analytics/next"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -45,6 +46,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" data-scroll-behavior="smooth">
       <body className={`${inter.variable} min-h-screen font-sans bg-forest-night text-ash antialiased select-none`}>
         <ClientInit />
+        <Analytics />
         {children}
       </body>
     </html>
