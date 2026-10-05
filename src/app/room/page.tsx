@@ -143,8 +143,15 @@ function RoomContent() {
     >
       <StarryNight />
 
-      {/* Sticky Top Header (flush to top with non-rounded top-left & top-right corners) */}
-      <RoomHeader roomId={roomId} socket={socket} onStoke={stokeFire} />
+      {/* Sticky Top Header with Mobile Chat/Fire Switcher at Top-Right */}
+      <RoomHeader
+        roomId={roomId}
+        socket={socket}
+        onStoke={stokeFire}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        unreadChatCount={unreadChatCount}
+      />
 
       {/* Browser Autoplay Blocked Banner */}
       {audioAutoplayBlocked && (
@@ -164,24 +171,18 @@ function RoomContent() {
 
       {/* Main Responsive Grid Container */}
       <div className="relative z-10 grid flex-1 min-h-0 gap-3 p-2 sm:p-3 md:grid-cols-[1fr_22rem] lg:grid-cols-[1fr_26rem] overflow-hidden">
-        {/* Left Section: Campfire Visualizer, Peer Circle & Voice station */}
+        {/* Left Section: Full-Screen Campfire Visualizer, Peer Circle */}
         <section
-          className={`relative flex min-h-0 flex-col justify-between overflow-y-auto scrollbar-none ${
+          className={`relative flex min-h-0 flex-col justify-between overflow-hidden ${
             activeTab === "chat" ? "hidden md:flex" : "flex"
           }`}
         >
-          {/* Campfire Visualizer Stage */}
-          <div className="relative flex flex-1 flex-col items-center justify-center min-h-[220px] sm:min-h-[300px]">
-            {/* Ambient Radial Glow */}
-            <div
-              className="pointer-events-none absolute h-[18rem] w-[18rem] sm:h-[34rem] sm:w-[34rem] rounded-full bg-[radial-gradient(circle,rgba(255,122,26,0.18),transparent_65%)] transition-opacity duration-1000"
-              style={{ opacity: 0.5 + intensity * 0.35 }}
-            />
+          {/* Campfire Visualizer Stage (Full-Screen dynamic canvas) */}
+          <div className="relative flex-1 w-full min-h-[260px] overflow-hidden rounded-2xl">
+            <Campfire intensity={intensity} onStoke={stokeFire} fullScreen />
 
-            <Campfire intensity={intensity} size="room" onStoke={stokeFire} />
-
-            <div className="relative -mt-4 sm:-mt-8 flex flex-col items-center gap-1 text-center">
-              <p className="text-[0.65rem] sm:text-[0.68rem] uppercase tracking-[0.22em] text-smoke/70">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-1 text-center pointer-events-none">
+              <p className="text-[0.65rem] sm:text-[0.68rem] uppercase tracking-[0.22em] text-smoke/70 bg-forest-night/40 px-3 py-1 rounded-full backdrop-blur-md border border-ash/[0.06]">
                 Tap fire to throw embers & feed sparks
               </p>
             </div>
@@ -219,7 +220,7 @@ function RoomContent() {
           )}
 
           {/* Bottom Dock: Peer Circle */}
-          <div className="w-full shrink-0 pt-1 pb-1">
+          <div className="relative z-20 w-full shrink-0 pt-2 pb-1">
             <PeerList socket={socket} roomId={roomId} onUpdateName={updateDisplayName} />
           </div>
         </section>
@@ -232,32 +233,6 @@ function RoomContent() {
         >
           <ChatPanel socket={socket} roomId={roomId} onStoke={stokeFire} />
         </aside>
-      </div>
-
-      {/* Sleek Small Floating Toggle Button for Mobile Navigation */}
-      <div className="fixed bottom-20 right-4 z-40 md:hidden">
-        {activeTab === "campfire" ? (
-          <button
-            onClick={() => handleTabChange("chat")}
-            title="Open Chat"
-            className="relative flex h-12 w-12 items-center justify-center rounded-full bg-flame text-forest-night shadow-xl shadow-flame/30 hover:scale-105 active:scale-95 transition border border-white/20 touch-manipulation"
-          >
-            <MessageSquare size={20} />
-            {unreadChatCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-emerald-500 px-1 text-[0.65rem] font-extrabold text-forest-night animate-bounce shadow-md">
-                {unreadChatCount}
-              </span>
-            )}
-          </button>
-        ) : (
-          <button
-            onClick={() => handleTabChange("campfire")}
-            title="Return to Campfire"
-            className="flex h-12 w-12 items-center justify-center rounded-full bg-forest-night/90 text-flame shadow-xl shadow-flame/20 hover:scale-105 active:scale-95 transition border border-flame/40 backdrop-blur-md touch-manipulation"
-          >
-            <Flame size={22} className="animate-pulse" />
-          </button>
-        )}
       </div>
     </main>
   );
