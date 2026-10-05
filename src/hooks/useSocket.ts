@@ -11,29 +11,46 @@ export function useSocket() {
   const [socketState, setSocketState] = useState<Socket | null>(null);
   const [connected, setConnected] = useState(false);
   const sessionId = useUserStore((s) => s.sessionId);
+  const displayName = useUserStore((s) => s.displayName);
 
   useEffect(() => {
     if (!sessionId) return;
 
-    const socket = io(SOCKET_URL, {
-      auth: { sessionId },
-      transports: ["websocket", "polling"],
-      reconnectionAttempts: 8,
-      timeout: 8000,
-    });
+    if (!socketRef.current) {
+      const socket = io(SOCKET_URL, {
+        auth: { sessionId, displayName: displayName || undefined },
+        transports: ["websocket", "polling"],
+        reconnectionAttempts: 10,
+        reconnectionDelay: 1000,
+        timeout: 10000,
+      });
 
-    socketRef.current = socket;
-    setSocketState(socket);
+      socketRef.current = socket;
+      setSocketState(socket);
 
-    socket.on("connect", () => setConnected(true));
-    socket.on("disconnect", () => setConnected(false));
-    socket.on("connect_error", () => setConnected(false));
+      const onConnect = () => setConnected(true);
+      const onDisconnect = () => setConnected(false);
+      const onConnectError = () => setConnected(false);
+
+      socket.on("connect", onConnect);
+      socket.on("disconnect", onDisconnect);
+      socket.on("connect_error", onConnectError);
+
+      if (socket.connected) {
+        setConnected(true);
+      }
+    }
 
     return () => {
-      socket.disconnect();
-      socketRef.current = null;
-      setSocketState(null);
-      setConnected(false);
+      if (socketRef.current) {
+        socketRef.current.off("connect");
+        socketRef.current.off("disconnect");
+        socketRef.current.off("connect_error");
+        socketRef.current.disconnect();
+        socketRef.current = null;
+        setSocketState(null);
+        setConnected(false);
+      }
     };
   }, [sessionId]);
 

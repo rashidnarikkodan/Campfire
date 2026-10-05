@@ -8,24 +8,49 @@ interface UserState {
   sessionId: string | null;
   displayName: string | null;
   init: () => void;
+  setDisplayName: (name: string) => void;
+  randomizeName: () => string;
 }
 
 export const useUserStore = create<UserState>((set, get) => ({
   sessionId: null,
   displayName: null,
+
   init: () => {
-    if (get().sessionId) return; // already initialized
-    const storedSession = window.localStorage.getItem(SESSION_KEY);
-    const storedName = window.localStorage.getItem(NAME_KEY);
-    const sessionId = storedSession || generateSessionId();
-    const displayName = storedName || generateName(sessionId);
+    if (get().sessionId) return;
+    if (typeof window === "undefined") return;
 
-    window.localStorage.setItem(SESSION_KEY, sessionId);
-    window.localStorage.setItem(NAME_KEY, displayName);
+    let sessionId = window.localStorage.getItem(SESSION_KEY);
+    let displayName = window.localStorage.getItem(NAME_KEY);
 
-    set({
-      sessionId,
-      displayName,
-    });
+    if (!sessionId) {
+      sessionId = generateSessionId();
+      window.localStorage.setItem(SESSION_KEY, sessionId);
+    }
+
+    if (!displayName) {
+      displayName = generateName(sessionId);
+      window.localStorage.setItem(NAME_KEY, displayName);
+    }
+
+    set({ sessionId, displayName });
+  },
+
+  setDisplayName: (name: string) => {
+    const trimmed = name.trim().slice(0, 32);
+    if (!trimmed) return;
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(NAME_KEY, trimmed);
+    }
+    set({ displayName: trimmed });
+  },
+
+  randomizeName: () => {
+    const newName = generateName();
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(NAME_KEY, newName);
+    }
+    set({ displayName: newName });
+    return newName;
   },
 }));

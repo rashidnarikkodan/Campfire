@@ -1,20 +1,97 @@
 "use client";
 
-import { useEffect } from "react";
-import Link from "next/link";
-import { Flame, LogOut } from "lucide-react";
+import { useEffect, useState, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { Flame, MessageSquare, Sparkles, X, Volume2 } from "lucide-react";
 import { useFireIntensity } from "@/hooks/useFireIntensity";
 import { useRoom } from "@/hooks/useRoom";
 import { useSocket } from "@/hooks/useSocket";
+import { useVoice } from "@/hooks/useVoice";
+import { useRoomStore, type Message } from "@/store/roomStore";
 import Campfire from "@/components/Campfire";
 import ChatPanel from "@/components/ChatPanel";
 import PeerList from "@/components/PeerList";
 import VoiceBar from "@/components/VoiceBar";
+import RoomHeader from "@/components/RoomHeader";
+import StarryNight from "@/components/StarryNight";
+import { ambientAudio } from "@/lib/ambientAudio";
 
-export default function RoomPage() {
+function RoomContent() {
+  const searchParams = useSearchParams();
+  const targetRoomId = searchParams.get("room");
+  const isPrivate = searchParams.get("private") === "true";
+
   const { socket, connected } = useSocket();
-  const { roomId } = useRoom({ socket });
+  const { roomId, stokeFire, updateDisplayName } = useRoom({
+    socket,
+    targetRoomId,
+    isPrivate,
+  });
+  const { audioAutoplayBlocked, ensureAudioContextActive } = useVoice({
+    socket,
+    roomId,
+  });
   const intensity = useFireIntensity();
+  const [activeTab, setActiveTab] = useState<"campfire" | "chat">("campfire");
+  const [unreadChatCount, setUnreadChatCount] = useState<number>(0);
+  const [floatingMessage, setFloatingMessage] = useState<Message | null>(null);
+
+  const messages = useRoomStore((s) => s.messages);
+  const lastMessageCountRef = useRef(messages.length);
+  const floatingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Track unread messages & trigger floating text on 'The Fire' screen
+  useEffect(() => {
+    if (messages.length > lastMessageCountRef.current) {
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg && !lastMsg.isSystem && lastMsg.senderId !== socket?.id) {
+        if (activeTab === "campfire") {
+          setUnreadChatCount((prev) => prev + 1);
+        }
+
+        // Show small text popup on The Fire screen
+        setFloatingMessage(lastMsg);
+        if (floatingTimeoutRef.current) {
+          clearTimeout(floatingTimeoutRef.current);
+        }
+        floatingTimeoutRef.current = setTimeout(() => {
+          setFloatingMessage(null);
+        }, 5500);
+      }
+    }
+    lastMessageCountRef.current = messages.length;
+  }, [messages, activeTab, socket?.id]);
+
+  const handleTabChange = (tab: "campfire" | "chat") => {
+    setActiveTab(tab);
+    if (tab === "chat") {
+      setUnreadChatCount(0);
+      setFloatingMessage(null);
+    }
+  };
+
+  // Unlock ambient sound & audio context on first interaction
+  useEffect(() => {
+    const handleFirstTouch = () => {
+      ambientAudio.start();
+      ensureAudioContextActive();
+      window.removeEventListener("click", handleFirstTouch);
+      window.removeEventListener("keydown", handleFirstTouch);
+      window.removeEventListener("touchstart", handleFirstTouch);
+      window.removeEventListener("pointerdown", handleFirstTouch);
+    };
+    window.addEventListener("click", handleFirstTouch, { once: true });
+    window.addEventListener("keydown", handleFirstTouch, { once: true });
+    window.addEventListener("touchstart", handleFirstTouch, { once: true });
+    window.addEventListener("pointerdown", handleFirstTouch, { once: true });
+
+    return () => {
+      window.removeEventListener("click", handleFirstTouch);
+      window.removeEventListener("keydown", handleFirstTouch);
+      window.removeEventListener("touchstart", handleFirstTouch);
+      window.removeEventListener("pointerdown", handleFirstTouch);
+    };
+  }, [ensureAudioContextActive]);
 
   useEffect(() => {
     if (!socket) return;
@@ -40,56 +117,176 @@ export default function RoomPage() {
 
   if (!connected || !roomId) {
     return (
-      <main className="environment flex min-h-screen flex-col items-center justify-center px-6 text-center text-ash">
-        <div className="relative mb-6">
-          <div className="absolute inset-0 rounded-full bg-ember/20 blur-2xl" />
-          <Flame size={42} className="relative text-ember animate-pulse" />
+      <main className="relative flex h-[100dvh] w-full flex-col items-center justify-center px-6 text-center text-ash bg-forest-night overflow-hidden">
+        <StarryNight />
+        <div className="relative z-10 flex flex-col items-center">
+          <div className="relative mb-6">
+            <div className="absolute inset-0 rounded-full bg-ember/30 blur-2xl animate-pulse" />
+            <Flame size={48} className="relative text-flame animate-bounce" />
+          </div>
+          <h1 className="text-2xl font-semibold tracking-tight text-ash">
+            Finding a warm circle
+          </h1>
+          <p className="mt-2 max-w-sm text-sm leading-relaxed text-smoke">
+            Stepping through the dark until a quiet fire opens...
+          </p>
+          <div className="mt-8 flex items-center gap-2 text-xs text-smoke/70">
+            <span className="h-1.5 w-1.5 rounded-full bg-flame animate-ping" />
+            <span>Connecting to mesh network</span>
+          </div>
         </div>
-        <h1 className="text-xl font-medium">Finding an open fire</h1>
-        <p className="mt-2 max-w-sm text-sm leading-7 text-smoke">
-          You are walking through the dark until a quiet circle opens.
-        </p>
       </main>
     );
   }
 
   return (
-    <main className="environment relative grid min-h-screen grid-rows-[minmax(0,1fr)_minmax(18rem,42svh)] overflow-hidden text-ash lg:grid-cols-[minmax(0,1fr)_25rem] lg:grid-rows-1">
-      <section className="relative flex min-h-0 flex-col px-5 py-5 sm:px-8">
-        <header className="z-10 flex items-center justify-between gap-4">
-          <div>
-            <p className="text-[0.68rem] uppercase tracking-[0.28em] text-smoke">Campfire room</p>
-            <p className="mt-1 text-sm font-medium text-flame">#{roomId}</p>
+    <main
+      onClick={ensureAudioContextActive}
+      className="relative flex h-[100dvh] max-h-[100dvh] w-full flex-col overflow-hidden bg-forest-night text-ash p-2 sm:p-4"
+    >
+      <StarryNight />
+
+      {/* Top Header */}
+      <div className="relative z-20 shrink-0 mb-2">
+        <RoomHeader roomId={roomId} onStoke={stokeFire} />
+      </div>
+
+      {/* Browser Autoplay Blocked Banner */}
+      {audioAutoplayBlocked && (
+        <div
+          onClick={ensureAudioContextActive}
+          className="relative z-30 mb-2 flex items-center justify-between gap-3 rounded-2xl bg-flame px-4 py-2.5 text-xs font-bold text-forest-night shadow-xl shadow-flame/30 cursor-pointer animate-bounce border border-white/20"
+        >
+          <div className="flex items-center gap-2">
+            <Volume2 size={16} />
+            <span>Click anywhere to enable audio from strangers in this campfire!</span>
           </div>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 rounded-full bg-ash/[0.04] px-4 py-2 text-xs text-smoke transition hover:bg-ash/[0.08] hover:text-ash"
-          >
-            <LogOut size={14} />
-            Leave
-          </Link>
-        </header>
-
-        <div className="relative flex flex-1 flex-col items-center justify-center">
-          <div
-            className="absolute h-[34rem] w-[34rem] rounded-full bg-[radial-gradient(circle,rgba(255,122,26,0.16),transparent_66%)] transition-opacity duration-1000"
-            style={{ opacity: 0.55 + intensity * 0.26 }}
-          />
-          <Campfire intensity={intensity} />
-          <p className="relative -mt-12 text-center text-[0.68rem] uppercase tracking-[0.24em] text-smoke/60">
-            The fire responds to presence
-          </p>
+          <span className="rounded-full bg-forest-night/20 px-2.5 py-1 text-[0.68rem] font-extrabold uppercase">
+            Tap to Unmute
+          </span>
         </div>
+      )}
 
-        <div className="z-10 mx-auto flex w-full max-w-3xl flex-col gap-5 pb-2">
-          <PeerList socket={socket} />
-          <VoiceBar socket={socket} roomId={roomId} />
-        </div>
-      </section>
+      {/* Mobile Tab Switcher */}
+      <div className="relative z-20 flex md:hidden shrink-0 mb-2 rounded-xl bg-forest-night/80 p-1 backdrop-blur-md border border-ash/[0.08]">
+        <button
+          onClick={() => handleTabChange("campfire")}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition active:scale-95 ${
+            activeTab === "campfire"
+              ? "bg-flame/20 text-flame border border-flame/30"
+              : "text-smoke hover:text-ash"
+          }`}
+        >
+          <Flame size={15} />
+          <span>The Fire</span>
+        </button>
+        <button
+          onClick={() => handleTabChange("chat")}
+          className={`relative flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition active:scale-95 ${
+            activeTab === "chat"
+              ? "bg-flame/20 text-flame border border-flame/30"
+              : "text-smoke hover:text-ash"
+          }`}
+        >
+          <MessageSquare size={15} />
+          <span>Chat</span>
+          {unreadChatCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-flame px-1 text-[0.65rem] font-bold text-forest-night animate-bounce">
+              {unreadChatCount}
+            </span>
+          )}
+        </button>
+      </div>
 
-      <aside className="min-h-0 bg-forest-night/[0.14] px-4 pb-4 pt-2 backdrop-blur-xl lg:px-5 lg:py-5">
-        <ChatPanel socket={socket} roomId={roomId} />
-      </aside>
+      {/* Main Responsive Grid Container */}
+      <div className="relative z-10 grid flex-1 min-h-0 gap-3 md:grid-cols-[1fr_24rem] lg:grid-cols-[1fr_26rem] overflow-hidden">
+        {/* Left Section: Campfire Visualizer, Peer Circle & Voice station */}
+        <section
+          className={`relative flex min-h-0 flex-col justify-between overflow-y-auto scrollbar-none ${
+            activeTab === "chat" ? "hidden md:flex" : "flex"
+          }`}
+        >
+          {/* Campfire Visualizer Stage */}
+          <div className="relative flex flex-1 flex-col items-center justify-center min-h-[220px] sm:min-h-[300px]">
+            {/* Ambient Radial Glow */}
+            <div
+              className="pointer-events-none absolute h-[18rem] w-[18rem] sm:h-[34rem] sm:w-[34rem] rounded-full bg-[radial-gradient(circle,rgba(255,122,26,0.18),transparent_65%)] transition-opacity duration-1000"
+              style={{ opacity: 0.5 + intensity * 0.35 }}
+            />
+
+            <Campfire intensity={intensity} size="room" onStoke={stokeFire} />
+
+            <div className="relative -mt-4 sm:-mt-8 flex flex-col items-center gap-1 text-center">
+              <p className="text-[0.65rem] sm:text-[0.68rem] uppercase tracking-[0.22em] text-smoke/70">
+                Tap fire to throw embers & feed sparks
+              </p>
+            </div>
+          </div>
+
+          {/* Floating Live Chat Message Snippet (Visible on 'The Fire' screen) */}
+          {floatingMessage && (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 w-[92%] sm:w-[85%] max-w-md animate-fade-up">
+              <div
+                onClick={() => handleTabChange("chat")}
+                className="group flex items-center justify-between gap-2.5 rounded-full bg-forest-night/90 px-3.5 py-2 backdrop-blur-xl border border-flame/40 shadow-xl shadow-flame/15 cursor-pointer active:scale-95 transition"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-flame/20 text-flame">
+                    <MessageSquare size={12} />
+                  </div>
+                  <span className="text-[0.72rem] font-bold text-flame shrink-0">
+                    {floatingMessage.senderName || "Stranger"}:
+                  </span>
+                  <span className="truncate text-xs text-ash/90">
+                    {floatingMessage.text}
+                  </span>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFloatingMessage(null);
+                  }}
+                  className="grid h-5 w-5 shrink-0 place-items-center rounded-full text-smoke/60 hover:text-ash hover:bg-ash/10 transition"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Bottom Dock: Peer Circle & Voice Station */}
+          <div className="w-full shrink-0 space-y-2 pt-1 pb-1">
+            <PeerList socket={socket} onUpdateName={updateDisplayName} />
+            <VoiceBar socket={socket} roomId={roomId} />
+          </div>
+        </section>
+
+        {/* Right Section: Chat Drawer */}
+        <aside
+          className={`min-h-0 ${
+            activeTab === "campfire" ? "hidden md:flex" : "flex"
+          } flex-col h-full overflow-hidden`}
+        >
+          <ChatPanel socket={socket} roomId={roomId} onStoke={stokeFire} />
+        </aside>
+      </div>
     </main>
+  );
+}
+
+export default function RoomPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex h-[100dvh] items-center justify-center bg-forest-night text-ash">
+          <div className="flex items-center gap-2">
+            <Flame size={24} className="text-flame animate-pulse" />
+            <span className="text-sm font-medium">Entering the woods...</span>
+          </div>
+        </main>
+      }
+    >
+      <RoomContent />
+    </Suspense>
   );
 }

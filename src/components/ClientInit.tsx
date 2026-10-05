@@ -8,6 +8,20 @@ export default function ClientInit() {
 
   useEffect(() => {
     init();
+
+    // Register PWA Service Worker
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("/sw.js")
+          .then((reg) => {
+            console.log("🔥 Campfire PWA Service Worker registered:", reg.scope);
+          })
+          .catch((err) => {
+            console.warn("PWA Service Worker registration failed:", err);
+          });
+      });
+    }
   }, [init]);
 
   return null;
