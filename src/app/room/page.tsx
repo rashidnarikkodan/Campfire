@@ -172,8 +172,34 @@ function RoomContent() {
         <Campfire intensity={intensity} onStoke={stokeFire} fullScreen />
       </div>
 
+      {/* Floating Top-Right Circular Chat/Fire Button (Out of header, rounded-full p-3) */}
+      <div className="fixed top-14 right-4 z-50 pointer-events-auto">
+        <button
+          onClick={() => handleTabChange(activeTab === "campfire" ? "chat" : "campfire")}
+          title={activeTab === "campfire" ? "Open Fleeting Chat" : "Return to The Fire"}
+          className={`relative grid place-items-center rounded-full p-3 transition-all duration-300 active:scale-90 touch-manipulation shadow-xl backdrop-blur-xl border ${
+            activeTab === "chat"
+              ? "bg-flame text-forest-night border-white/40 shadow-flame/40 scale-105"
+              : "bg-forest-night/80 text-flame border-flame/40 hover:bg-forest-night/95 hover:border-flame"
+          }`}
+        >
+          {activeTab === "campfire" ? (
+            <>
+              <MessageSquare size={18} />
+              {unreadChatCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-emerald-500 px-1 text-[0.6rem] font-extrabold text-forest-night animate-bounce shadow-md">
+                  {unreadChatCount}
+                </span>
+              )}
+            </>
+          ) : (
+            <Flame size={18} className="animate-pulse" />
+          )}
+        </button>
+      </div>
+
       {/* Main Viewport Workspace Layer */}
-      <div className="relative z-10 flex flex- min-h-0 w-full overflow-hidden">
+      <div className="relative z-10 flex flex-1 min-h-0 w-full overflow-hidden">
         {/* Campfire Stage Overlay: Peer 3D Ring & Floating Snippets */}
         <section
           className={`relative flex-1 h-full w-full overflow-hidden transition-all duration-300 ease-in-out ${
