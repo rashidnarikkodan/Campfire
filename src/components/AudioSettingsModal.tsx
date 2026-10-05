@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { Mic, Volume2, X, Settings, Check, Play, RefreshCw } from "lucide-react";
 import type { Socket } from "socket.io-client";
 import { useVoice } from "@/hooks/useVoice";
-import { ambientAudio } from "@/lib/ambientAudio";
 
 type AudioSettingsModalProps = {
   socket: Socket | null;
@@ -38,8 +37,26 @@ export default function AudioSettingsModal({
 
   const handleTestSpeaker = () => {
     setTestPlaying(true);
-    ambientAudio.playTestChime();
-    setTimeout(() => setTestPlaying(false), 1200);
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(440, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.3);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.4);
+      }
+    } catch {
+      // Ignore if Web Audio fails
+    }
+    setTimeout(() => setTestPlaying(false), 800);
   };
 
   return (

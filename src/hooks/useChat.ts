@@ -4,7 +4,6 @@ import { useEffect, useCallback, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 import { MAX_MESSAGE_LENGTH } from "@/lib/constants";
 import { useRoomStore, type Message } from "@/store/roomStore";
-import { ambientAudio } from "@/lib/ambientAudio";
 
 export function useChat({
   socket,
@@ -26,9 +25,6 @@ export function useChat({
 
     const onMessage = (msg: Message) => {
       addMessage(msg);
-      if (msg.senderId !== socket.id && !msg.isSystem) {
-        ambientAudio.playMessageSound();
-      }
     };
 
     const onJoined = ({ recentMessages }: { recentMessages?: Message[] }) => {

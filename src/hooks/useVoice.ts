@@ -722,8 +722,6 @@ export function useVoice({ socket, roomId }: UseVoiceProps) {
           await pc.setRemoteDescription(new RTCSessionDescription(sdp));
           await flushIceCandidates(fromSocketId, pc);
         } catch (err) {
-          // Log as debug level if signaling state changed concurrently
-          if (pc.signalingState === "stable") return;
           console.warn(`Signaling warning handling answer from ${fromSocketId}:`, err);
         }
       }
