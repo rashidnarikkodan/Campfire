@@ -288,7 +288,7 @@ export default function Campfire({
       context.bezierCurveTo(
         baseX - 60 * baseIntensity * widthScale + sway1 * 0.4,
         baseY - 75 * baseIntensity * heightScale,
-        baseX - 25 * baseIntensity * widthScale + sway2 * 0.3,
+        baseX - 45 * baseIntensity * widthScale + sway2 * 0.3,
         flameTop + 50 * baseIntensity * heightScale,
         baseX + sway1 * 0.25,
         flameTop

@@ -151,6 +151,7 @@ function RoomContent() {
         activeTab={activeTab}
         onTabChange={handleTabChange}
         unreadChatCount={unreadChatCount}
+        onUpdateName={updateDisplayName}
       />
 
       {/* Browser Autoplay Blocked Banner */}
@@ -174,31 +175,34 @@ function RoomContent() {
         <Campfire intensity={intensity} onStoke={stokeFire} fullScreen />
       </div>
 
-      {/* Floating Top-Right Chat/Fire Switcher Button Below Header */}
-      <div className="fixed top-14 right-4 z-50 pointer-events-auto">
+      {/* Circular Floating Chat Toggle Button at Bottom-Right */}
+      <div className="fixed bottom-6 right-6 z-50 pointer-events-auto">
         <button
           onClick={() => handleTabChange(activeTab === "campfire" ? "chat" : "campfire")}
           title={activeTab === "campfire" ? "Open Fleeting Chat" : "Return to The Fire"}
-          className={`relative flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition-all duration-300 active:scale-95 touch-manipulation backdrop-blur-xl border shadow-xl ${
+          className={`relative grid h-14 w-14 place-items-center rounded-full transition-all duration-300 active:scale-90 touch-manipulation shadow-2xl backdrop-blur-2xl ${
             activeTab === "chat"
-              ? "bg-flame text-forest-night border-white/30 shadow-flame/30"
-              : "bg-forest-night/80 text-flame border-flame/40 hover:bg-forest-night/95 hover:border-flame"
+              ? "bg-flame text-forest-night border-2 border-white/40 shadow-flame/40 scale-105"
+              : "bg-forest-night/90 text-flame hover:bg-forest-night border border-flame/40"
           }`}
         >
           {activeTab === "campfire" ? (
             <>
-              <MessageSquare size={14} />
-              <span>Chat</span>
+              <MessageSquare size={22} />
               {unreadChatCount > 0 && (
-                <span className="flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-emerald-500 px-1 text-[0.6rem] font-extrabold text-forest-night animate-bounce">
+                <span className="absolute -top-1 -right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-emerald-500 px-1 text-[0.65rem] font-extrabold text-forest-night animate-bounce shadow-md">
                   {unreadChatCount}
                 </span>
               )}
             </>
           ) : (
             <>
-              <Flame size={14} className="animate-pulse" />
-              <span>Fire</span>
+              <span className="hidden sm:inline">
+                <X size={22} />
+              </span>
+              <span className="inline sm:hidden">
+                <Flame size={22} className="animate-pulse" />
+              </span>
             </>
           )}
         </button>
@@ -214,13 +218,6 @@ function RoomContent() {
         >
           {/* Peer 3D Campfire Circle Overlay */}
           <PeerList socket={socket} roomId={roomId} onUpdateName={updateDisplayName} />
-
-          {/* Tap Fire Prompt Hint at Top Center */}
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
-            <p className="text-[0.65rem] sm:text-[0.68rem] uppercase tracking-[0.22em] text-smoke/70 bg-forest-night/60 px-3.5 py-1 rounded-full backdrop-blur-md border border-ash/10 shadow-lg">
-              Tap fire to throw embers & feed sparks
-            </p>
-          </div>
 
           {/* Floating Live Chat Message Snippet */}
           {floatingMessage && (
