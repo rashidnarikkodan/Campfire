@@ -11,7 +11,6 @@ import { useRoomStore, type Message } from "@/store/roomStore";
 import Campfire from "@/components/Campfire";
 import ChatPanel from "@/components/ChatPanel";
 import PeerList from "@/components/PeerList";
-import VoiceBar from "@/components/VoiceBar";
 import RoomHeader from "@/components/RoomHeader";
 import StarryNight from "@/components/StarryNight";
 
@@ -219,10 +218,9 @@ function RoomContent() {
             </div>
           )}
 
-          {/* Bottom Dock: Peer Circle & Voice Station */}
-          <div className="w-full shrink-0 space-y-2 pt-1 pb-1">
-            <PeerList socket={socket} onUpdateName={updateDisplayName} />
-            <VoiceBar socket={socket} roomId={roomId} />
+          {/* Bottom Dock: Peer Circle */}
+          <div className="w-full shrink-0 pt-1 pb-1">
+            <PeerList socket={socket} roomId={roomId} onUpdateName={updateDisplayName} />
           </div>
         </section>
 

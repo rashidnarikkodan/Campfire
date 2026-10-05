@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { AlertTriangle, Edit3, Flame, RefreshCw, Volume2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { AlertTriangle, Edit3, Flame, Mic, MicOff, RefreshCw } from "lucide-react";
 import type { Socket } from "socket.io-client";
 import { useRoomStore } from "@/store/roomStore";
 import { useUserStore } from "@/store/userStore";
 import { useVoiceStore } from "@/store/voiceStore";
+import { useVoice } from "@/hooks/useVoice";
 
 type PeerListProps = {
   socket: Socket | null;
+  roomId?: string | null;
   onUpdateName?: (newName: string) => void;
 };
 
@@ -29,7 +31,12 @@ const avatarHue = (name: string) => {
   return Math.abs(hash) % 360;
 };
 
-export default function PeerList({ socket, onUpdateName }: PeerListProps) {
+const isTypingTarget = (target: Element | null) =>
+  target instanceof HTMLInputElement ||
+  target instanceof HTMLTextAreaElement ||
+  target?.getAttribute("contenteditable") === "true";
+
+export default function PeerList({ socket, roomId, onUpdateName }: PeerListProps) {
   const peers = useRoomStore((state) => state.peers);
   const localName = useUserStore((state) => state.displayName) ?? "you";
   const setDisplayName = useUserStore((state) => state.setDisplayName);
@@ -39,11 +46,48 @@ export default function PeerList({ socket, onUpdateName }: PeerListProps) {
   const localSpeaking = useVoiceStore((state) => state.isSpeaking);
   const localAudioLevel = useVoiceStore((state) => state.localAudioLevel);
 
+  const {
+    handsFreeMode,
+    hasMicPermission,
+    requestMicPermission,
+    startSpeaking,
+    stopSpeaking,
+    toggleMic,
+  } = useVoice({ socket, roomId: roomId || null });
+
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingText, setEditingText] = useState("");
   const [reportedPeer, setReportedPeer] = useState<string | null>(null);
 
   const total = peers.length + 1;
+
+  // Spacebar Push-To-Talk listener
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (handsFreeMode) return;
+      if (event.code !== "Space" || event.repeat || isTypingTarget(document.activeElement)) return;
+      event.preventDefault();
+      if (!hasMicPermission) {
+        requestMicPermission();
+      } else {
+        startSpeaking();
+      }
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (handsFreeMode) return;
+      if (event.code !== "Space" || isTypingTarget(document.activeElement)) return;
+      event.preventDefault();
+      stopSpeaking();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [startSpeaking, stopSpeaking, handsFreeMode, hasMicPermission, requestMicPermission]);
 
   const handleStartEdit = () => {
     setEditingText(localName);
@@ -96,9 +140,11 @@ export default function PeerList({ socket, onUpdateName }: PeerListProps) {
     })),
   ];
 
+  const isLiveMic = localSpeaking || handsFreeMode;
+
   return (
     <section className="rounded-2xl bg-forest-night/60 p-3 sm:p-3.5 backdrop-blur-xl border border-ash/[0.08] shadow-lg">
-      <div className="mb-2 flex items-center justify-between gap-2">
+      <div className="mb-2.5 flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 text-xs text-smoke">
           <Flame size={14} className="text-ember shrink-0" />
           <span className="truncate">
@@ -106,46 +152,62 @@ export default function PeerList({ socket, onUpdateName }: PeerListProps) {
           </span>
         </div>
 
-        {isEditingName ? (
-          <div className="flex items-center gap-1">
-            <input
-              type="text"
-              value={editingText}
-              onChange={(e) => setEditingText(e.target.value.slice(0, 24))}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSaveName();
-                if (e.key === "Escape") setIsEditingName(false);
-              }}
-              className="rounded-lg bg-ash/10 px-2 py-1 text-xs text-ash focus:outline-none focus:ring-1 focus:ring-flame w-24 sm:w-32"
-              autoFocus
-            />
-            <button
-              onClick={handleSaveName}
-              className="rounded-lg bg-flame/20 px-2.5 py-1 text-xs font-semibold text-flame hover:bg-flame/30 active:scale-95 touch-manipulation min-h-[28px]"
-            >
-              Save
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              onClick={handleStartEdit}
-              title="Edit your alias"
-              className="inline-flex items-center gap-1 rounded-lg bg-ash/[0.06] px-2.5 py-1 text-[0.7rem] font-medium text-smoke hover:text-ash hover:bg-ash/[0.12] transition active:scale-95 touch-manipulation min-h-[28px]"
-            >
-              <Edit3 size={11} />
-              <span>Rename</span>
-            </button>
-            <button
-              onClick={handleRollName}
-              title="Generate new nature alias"
-              aria-label="Generate new alias"
-              className="grid h-7 w-7 place-items-center rounded-lg bg-ash/[0.06] text-smoke hover:text-ash hover:bg-ash/[0.12] transition active:scale-95 touch-manipulation"
-            >
-              <RefreshCw size={11} />
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* Mic Toggle Button */}
+          <button
+            onClick={toggleMic}
+            title={isLiveMic ? "Mic is live - Click to mute" : "Mic is muted - Click to turn on or hold Spacebar"}
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.7rem] font-medium transition active:scale-95 touch-manipulation min-h-[28px] ${
+              isLiveMic
+                ? "bg-flame text-forest-night font-bold shadow-md shadow-flame/30 animate-pulse border border-white/20"
+                : "bg-ash/[0.06] text-smoke hover:text-ash hover:bg-ash/[0.12]"
+            }`}
+          >
+            {isLiveMic ? <Mic size={12} /> : <MicOff size={12} />}
+            <span>{isLiveMic ? "Live" : "Muted"}</span>
+          </button>
+
+          {isEditingName ? (
+            <div className="flex items-center gap-1">
+              <input
+                type="text"
+                value={editingText}
+                onChange={(e) => setEditingText(e.target.value.slice(0, 24))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSaveName();
+                  if (e.key === "Escape") setIsEditingName(false);
+                }}
+                className="campfire-input text-xs text-ash py-0.5 px-2 w-24 sm:w-32"
+                autoFocus
+              />
+              <button
+                onClick={handleSaveName}
+                className="rounded-lg bg-flame/20 px-2.5 py-1 text-xs font-semibold text-flame hover:bg-flame/30 active:scale-95 touch-manipulation min-h-[28px]"
+              >
+                Save
+              </button>
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={handleStartEdit}
+                title="Edit your alias"
+                className="inline-flex items-center gap-1 rounded-lg bg-ash/[0.06] px-2.5 py-1 text-[0.7rem] font-medium text-smoke hover:text-ash hover:bg-ash/[0.12] transition active:scale-95 touch-manipulation min-h-[28px]"
+              >
+                <Edit3 size={11} />
+                <span>Rename</span>
+              </button>
+              <button
+                onClick={handleRollName}
+                title="Generate new nature alias"
+                aria-label="Generate new alias"
+                className="grid h-7 w-7 place-items-center rounded-lg bg-ash/[0.06] text-smoke hover:text-ash hover:bg-ash/[0.12] transition active:scale-95 touch-manipulation"
+              >
+                <RefreshCw size={11} />
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="scrollbar-none flex flex-wrap gap-1.5 sm:gap-2 max-h-32 overflow-y-auto pt-0.5">
