@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MessageCircle, Send, Sparkles } from "lucide-react";
+import { MessageCircle, Send, Sparkles, X } from "lucide-react";
 import type { Socket } from "socket.io-client";
 import { useChat } from "@/hooks/useChat";
 
@@ -9,6 +9,7 @@ type ChatPanelProps = {
   socket: Socket | null;
   roomId: string | null;
   onStoke?: () => void;
+  onClose?: () => void;
 };
 
 const MAX_MESSAGE_LENGTH = 500;
@@ -20,7 +21,7 @@ function formatTime(timestamp: number) {
   }).format(timestamp);
 }
 
-export default function ChatPanel({ socket, roomId }: ChatPanelProps) {
+export default function ChatPanel({ socket, roomId, onClose }: ChatPanelProps) {
   const { messages, typingUsers, chatError, sendMessage, sendTyping } = useChat({ socket, roomId });
   const [text, setText] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
@@ -58,7 +59,7 @@ export default function ChatPanel({ socket, roomId }: ChatPanelProps) {
   const otherTypingUsers = typingUsers.filter((u) => u.socketId !== socket?.id);
 
   return (
-    <div className="flex h-full w-full flex-col bg-forest-night sm:bg-forest-night/90 sm:backdrop-blur-2xl border-l border-ash/[0.08] shadow-lg overflow-hidden">
+    <div className="flex h-full w-full flex-col bg-forest-night border-l border-ash/[0.08] shadow-lg overflow-hidden">
       {/* Header */}
       <header className="flex items-center justify-between border-b border-ash/[0.08] px-3.5 py-2.5 shrink-0 bg-forest-night">
         <div className="flex items-center gap-2">
@@ -68,6 +69,15 @@ export default function ChatPanel({ socket, roomId }: ChatPanelProps) {
             <p className="text-[0.65rem] text-smoke">Spoken words dissolve with the fire</p>
           </div>
         </div>
+        {onClose && (
+          <button
+            onClick={onClose}
+            title="Return to Campfire"
+            className="grid h-7 w-7 place-items-center rounded-full text-smoke/70 hover:text-ash hover:bg-ash/10 transition active:scale-95 touch-manipulation"
+          >
+            <X size={16} />
+          </button>
+        )}
       </header>
 
       {/* Chat Error Banner */}

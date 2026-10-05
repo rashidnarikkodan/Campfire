@@ -168,8 +168,8 @@ export default function PeerList({ socket, roomId, onUpdateName }: PeerListProps
               key={person.id}
               className="absolute pointer-events-auto transition-all duration-500 ease-out transform -translate-x-1/2 -translate-y-1/2"
               style={{
-                left: `calc(50% + ${cos * -1} * min(36vw, 360px))`,
-                top: `calc(65% + ${sin} * min(18vh, 120px))`,
+                left: `calc(50% + ${cos * -1} * min(34vw, 320px))`,
+                top: `calc(56% + ${sin} * min(14vh, 95px))`,
                 zIndex: Math.round(10 + sin * 10),
               }}
             >

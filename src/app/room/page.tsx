@@ -172,32 +172,6 @@ function RoomContent() {
         <Campfire intensity={intensity} onStoke={stokeFire} fullScreen />
       </div>
 
-      {/* Floating Top-Right Circular Chat/Fire Button (Out of header, rounded-full p-3) */}
-      <div className="fixed top-14 right-4 z-50 pointer-events-auto">
-        <button
-          onClick={() => handleTabChange(activeTab === "campfire" ? "chat" : "campfire")}
-          title={activeTab === "campfire" ? "Open Fleeting Chat" : "Return to The Fire"}
-          className={`relative grid place-items-center rounded-full p-3 transition-all duration-300 active:scale-90 touch-manipulation shadow-xl backdrop-blur-xl border ${
-            activeTab === "chat"
-              ? "bg-flame text-forest-night border-white/40 shadow-flame/40 scale-105"
-              : "bg-forest-night/80 text-flame border-flame/40 hover:bg-forest-night/95 hover:border-flame"
-          }`}
-        >
-          {activeTab === "campfire" ? (
-            <>
-              <MessageSquare size={18} />
-              {unreadChatCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-emerald-500 px-1 text-[0.6rem] font-extrabold text-forest-night animate-bounce shadow-md">
-                  {unreadChatCount}
-                </span>
-              )}
-            </>
-          ) : (
-            <Flame size={18} className="animate-pulse" />
-          )}
-        </button>
-      </div>
-
       {/* Main Viewport Workspace Layer */}
       <div className="relative z-10 flex flex-1 min-h-0 w-full overflow-hidden">
         {/* Campfire Stage Overlay: Peer 3D Ring & Floating Snippets */}
@@ -214,7 +188,7 @@ function RoomContent() {
             <div className="absolute top-14 left-1/2 -translate-x-1/2 z-30 w-[92%] sm:w-[85%] max-w-md animate-fade-up">
               <div
                 onClick={() => handleTabChange("chat")}
-                className="group flex items-center justify-between gap-2.5 rounded-full bg-forest-night/90 px-3.5 py-2 backdrop-blur-xl border border-flame/40 shadow-xl shadow-flame/15 cursor-pointer active:scale-95 transition"
+                className="group flex items-center justify-between gap-2.5 rounded-full bg-forest-night/95 px-3.5 py-2 backdrop-blur-xl border border-flame/40 shadow-xl shadow-flame/15 cursor-pointer active:scale-95 transition"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-flame/20 text-flame">
@@ -241,15 +215,20 @@ function RoomContent() {
           )}
         </section>
 
-        {/* Right Translucent Chat Panel Drawer (Clean, Zero Overlaps) */}
+        {/* Right Chat Panel Drawer (Solid Background on Mobile to Hide Embers) */}
         <aside
-          className={`h-full z-40 transition-all duration-300 ease-in-out overflow-hidden flex flex-col bg-forest-night/90 backdrop-blur-2xl border-l border-ash/15 shadow-2xl ${
+          className={`h-full z-40 transition-all duration-300 ease-in-out overflow-hidden flex flex-col bg-forest-night border-l border-ash/15 shadow-2xl ${
             activeTab === "chat"
               ? "w-full md:w-[22rem] lg:w-[26rem] opacity-100"
               : "w-0 opacity-0 pointer-events-none border-none"
           }`}
         >
-          <ChatPanel socket={socket} roomId={roomId} onStoke={stokeFire} />
+          <ChatPanel
+            socket={socket}
+            roomId={roomId}
+            onStoke={stokeFire}
+            onClose={() => handleTabChange("campfire")}
+          />
         </aside>
       </div>
     </main>
