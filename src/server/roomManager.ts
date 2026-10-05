@@ -13,6 +13,7 @@ import {
   type PresenceState,
   type ParticipantSession,
 } from "./sessionManager";
+import { incrementMetric, recordCampfireDuration } from "./metrics";
 
 export interface PeerInfo {
   socketId: string;
@@ -108,6 +109,7 @@ export function findOrCreateRoom(targetRoomId?: unknown, isPrivate: boolean = fa
   if (typeof targetRoomId === "string" && targetRoomId.trim()) {
     const cleanId = targetRoomId.trim().toLowerCase().slice(0, 32);
     if (!rooms.has(cleanId)) {
+      incrementMetric.campfiresCreated();
       rooms.set(cleanId, {
         id: cleanId,
         isPrivate: Boolean(isPrivate),
@@ -133,6 +135,7 @@ export function findOrCreateRoom(targetRoomId?: unknown, isPrivate: boolean = fa
 
   // Create new room
   const newId = generateRoomId();
+  incrementMetric.campfiresCreated();
   rooms.set(newId, {
     id: newId,
     isPrivate: Boolean(isPrivate),
@@ -155,12 +158,14 @@ export function joinRoom(
 ) {
   const cooldownRemaining = getJoinCooldownRemaining(socket);
   if (cooldownRemaining > 0) {
+    incrementMetric.joinFailures();
     socket.emit("mod:cooldown", { remainingMs: cooldownRemaining });
     return;
   }
 
   // Ensure room exists
   if (!rooms.has(roomId)) {
+    incrementMetric.campfiresCreated();
     rooms.set(roomId, {
       id: roomId,
       isPrivate: Boolean(isPrivate),
@@ -184,6 +189,7 @@ export function joinRoom(
 
   // If reconnect timer is active for this session, clear it immediately
   if (reconnectTimers.has(sessionId)) {
+    incrementMetric.reconnects();
     clearTimeout(reconnectTimers.get(sessionId)!);
     reconnectTimers.delete(sessionId);
   }
@@ -192,6 +198,7 @@ export function joinRoom(
 
   // Check room capacity if this is a NEW session joining the room
   if (!existingPeer && room.peers.size >= MAX_ROOM_SIZE) {
+    incrementMetric.joinFailures();
     socket.emit("room:full", { roomId });
     return;
   }
@@ -326,6 +333,7 @@ export function leaveRoom(io: SocketIOServer, socket: Socket, isExplicitLeave: b
       }
 
       if (room.peers.size === 0) {
+        recordCampfireDuration(Date.now() - room.createdAt);
         rooms.delete(roomId);
       }
     }

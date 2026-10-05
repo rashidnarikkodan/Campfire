@@ -668,6 +668,13 @@ export function useVoice({ socket, roomId }: UseVoiceProps) {
       }
 
       try {
+        if (offerCollision && isPolite) {
+          try {
+            await pc.setLocalDescription({ type: "rollback" });
+          } catch {
+            // Ignore rollback if state was already stable
+          }
+        }
         await pc.setRemoteDescription(new RTCSessionDescription(sdp));
         await flushIceCandidates(fromSocketId, pc);
 
@@ -679,7 +686,7 @@ export function useVoice({ socket, roomId }: UseVoiceProps) {
           sdp: pc.localDescription,
         });
       } catch (err) {
-        console.error(`Error answering offer from ${fromSocketId}:`, err);
+        console.warn(`Signaling warning answering offer from ${fromSocketId}:`, err);
       }
     };
 
@@ -693,11 +700,12 @@ export function useVoice({ socket, roomId }: UseVoiceProps) {
       const pc = pcsRef.current.get(fromSocketId);
       if (pc) {
         if (ignoreOfferRef.current.get(fromSocketId)) return;
+        if (pc.signalingState !== "have-local-offer") return;
         try {
           await pc.setRemoteDescription(new RTCSessionDescription(sdp));
           await flushIceCandidates(fromSocketId, pc);
         } catch (err) {
-          console.error(`Error handling answer from ${fromSocketId}:`, err);
+          console.warn(`Signaling warning handling answer from ${fromSocketId}:`, err);
         }
       }
     };
