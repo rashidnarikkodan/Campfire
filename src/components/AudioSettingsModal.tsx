@@ -1,21 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Mic, Volume2, X, Settings, Check, Play, RefreshCw } from "lucide-react";
+import { Mic, Volume2, X, Settings, Check, Play, RefreshCw, Edit3 } from "lucide-react";
 import type { Socket } from "socket.io-client";
 import { useVoice } from "@/hooks/useVoice";
+import { useUserStore } from "@/store/userStore";
 
 type AudioSettingsModalProps = {
   socket: Socket | null;
   roomId: string | null;
   onClose: () => void;
+  onUpdateName?: (newName: string) => void;
 };
 
 export default function AudioSettingsModal({
   socket,
   roomId,
   onClose,
+  onUpdateName,
 }: AudioSettingsModalProps) {
+  const displayName = useUserStore((s) => s.displayName) ?? "you";
+  const setDisplayName = useUserStore((s) => s.setDisplayName);
+  const randomizeName = useUserStore((s) => s.randomizeName);
+  const [tempName, setTempName] = useState(displayName);
+
   const {
     availableMics,
     availableSpeakers,
@@ -65,7 +73,59 @@ export default function AudioSettingsModal({
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-md rounded-3xl bg-forest-night/90 p-5 sm:p-6 backdrop-blur-2xl border border-ash/[0.12] shadow-2xl shadow-flame/10 text-ash flex flex-col gap-5"
       >
-        {/* Header */}
+        {/* Display Name & Alias Section */}
+        <div className="flex flex-col gap-2 pb-2 border-b border-ash/[0.06]">
+          <label className="flex items-center justify-between text-xs font-semibold text-ash">
+            <span className="flex items-center gap-1.5">
+              <Edit3 size={14} className="text-flame" />
+              <span>Your Campfire Alias</span>
+            </span>
+            <button
+              onClick={() => {
+                const newName = randomizeName();
+                setTempName(newName);
+                if (onUpdateName) onUpdateName(newName);
+              }}
+              title="Generate new nature alias"
+              className="text-[0.68rem] text-smoke hover:text-flame flex items-center gap-1 transition"
+            >
+              <RefreshCw size={11} />
+              <span>Randomize</span>
+            </button>
+          </label>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={tempName}
+              onChange={(e) => {
+                const val = e.target.value.slice(0, 24);
+                setTempName(val);
+              }}
+              onBlur={() => {
+                const trimmed = tempName.trim();
+                if (trimmed) {
+                  setDisplayName(trimmed);
+                  if (onUpdateName) onUpdateName(trimmed);
+                }
+              }}
+              placeholder="e.g. mossy-ember-42"
+              className="campfire-input flex-1 text-xs text-ash py-2 px-3"
+            />
+            <button
+              onClick={() => {
+                const trimmed = tempName.trim();
+                if (trimmed) {
+                  setDisplayName(trimmed);
+                  if (onUpdateName) onUpdateName(trimmed);
+                }
+              }}
+              className="rounded-xl bg-flame/20 px-3 py-2 text-xs font-bold text-flame hover:bg-flame/30 active:scale-95 transition"
+            >
+              Save
+            </button>
+          </div>
+        </div>
         <div className="flex items-center justify-between border-b border-ash/[0.08] pb-3">
           <div className="flex items-center gap-2.5">
             <div className="grid h-9 w-9 place-items-center rounded-2xl bg-flame/20 text-flame border border-flame/30">

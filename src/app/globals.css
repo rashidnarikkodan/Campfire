@@ -58,11 +58,17 @@ button {
 }
 
 button:focus-visible,
-a:focus-visible,
-textarea:focus-visible,
-input:focus-visible {
+a:focus-visible {
   outline: 2px solid rgba(255, 176, 58, 0.75);
   outline-offset: 3px;
+}
+
+textarea:focus,
+input:focus,
+textarea:focus-visible,
+input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 ::selection {
@@ -79,13 +85,14 @@ input:focus-visible {
   padding: 0.5rem 0.85rem;
   transition: all 0.22s cubic-bezier(0.22, 1, 0.36, 1);
   backdrop-filter: blur(12px);
+  outline: none;
 }
 
 .campfire-input:focus,
 .campfire-input:focus-within {
-  outline: none;
+  outline: none !important;
   border-color: rgba(255, 176, 58, 0.65);
-  box-shadow: 0 0 0 3px rgba(255, 176, 58, 0.15), 0 0 16px rgba(255, 115, 21, 0.12);
+  box-shadow: 0 0 0 2px rgba(255, 176, 58, 0.2), 0 0 12px rgba(255, 115, 21, 0.12);
   background-color: rgba(21, 18, 14, 0.85);
 }
 

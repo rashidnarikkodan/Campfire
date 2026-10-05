@@ -15,6 +15,7 @@ interface RoomHeaderProps {
   activeTab?: "campfire" | "chat";
   onTabChange?: (tab: "campfire" | "chat") => void;
   unreadChatCount?: number;
+  onUpdateName?: (newName: string) => void;
 }
 
 export default function RoomHeader({
@@ -24,6 +25,7 @@ export default function RoomHeader({
   activeTab = "campfire",
   onTabChange,
   unreadChatCount = 0,
+  onUpdateName,
 }: RoomHeaderProps) {
   const [copied, setCopied] = useState(false);
   const stokeCount = useRoomStore((s) => s.stokeCount);
@@ -50,6 +52,7 @@ export default function RoomHeader({
           socket={socket || null}
           roomId={roomId}
           onClose={() => setIsSettingsOpen(false)}
+          onUpdateName={onUpdateName}
         />
       )}
 

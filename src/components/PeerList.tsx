@@ -244,72 +244,46 @@ export default function PeerList({ socket, roomId, onUpdateName }: PeerListProps
         })}
       </div>
 
-      {/* Floating Bottom Control Bar */}
-      <div className="absolute bottom-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-none">
-        {/* Left: Stranger Count Badge */}
-        <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-forest-night/80 px-3.5 py-1.5 backdrop-blur-xl border border-ash/15 text-xs text-smoke shadow-lg">
-          <Flame size={14} className="text-flame animate-pulse shrink-0" />
-          <span className="truncate">
-            <strong className="text-ash font-bold">{total}</strong> {total === 1 ? "stranger" : "strangers"} by hearth
-          </span>
-        </div>
+      {/* Top Left: Strangers by Hearth Count Badge */}
+      <div className="absolute top-4 left-4 z-20 pointer-events-auto flex items-center gap-2 rounded-full bg-forest-night/80 px-3.5 py-1.5 backdrop-blur-xl border border-ash/15 text-xs text-smoke shadow-lg">
+        <Flame size={14} className="text-flame animate-pulse shrink-0" />
+        <span className="truncate">
+          <strong className="text-ash font-bold">{total}</strong> {total === 1 ? "stranger" : "strangers"} by hearth
+        </span>
+      </div>
 
-        {/* Right: Controls & Mic Toggle Button */}
-        <div className="pointer-events-auto flex items-center gap-2">
-          {isEditingName ? (
-            <div className="flex items-center gap-1.5 rounded-2xl bg-forest-night/80 p-1.5 backdrop-blur-xl border border-ash/15 shadow-lg">
-              <input
-                type="text"
-                value={editingText}
-                onChange={(e) => setEditingText(e.target.value.slice(0, 24))}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSaveName();
-                  if (e.key === "Escape") setIsEditingName(false);
-                }}
-                className="campfire-input text-xs text-ash py-1 px-2.5 w-28 sm:w-36"
-                autoFocus
-              />
-              <button
-                onClick={handleSaveName}
-                className="rounded-xl bg-flame/20 px-3 py-1.5 text-xs font-bold text-flame hover:bg-flame/30 active:scale-95 touch-manipulation min-h-[30px]"
-              >
-                Save
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={handleStartEdit}
-                title="Edit your alias"
-                className="inline-flex items-center gap-1.5 rounded-xl bg-forest-night/80 px-3 py-1.5 text-xs font-medium text-smoke hover:text-ash hover:bg-forest-night/95 backdrop-blur-xl border border-ash/15 transition active:scale-95 touch-manipulation min-h-[32px] shadow-lg"
-              >
-                <Edit3 size={12} />
-                <span>Rename</span>
-              </button>
-              <button
-                onClick={handleRollName}
-                title="Generate new nature alias"
-                aria-label="Generate new alias"
-                className="grid h-8 w-8 place-items-center rounded-xl bg-forest-night/80 text-smoke hover:text-ash hover:bg-forest-night/95 backdrop-blur-xl border border-ash/15 transition active:scale-95 touch-manipulation shadow-lg"
-              >
-                <RefreshCw size={12} />
-              </button>
-            </div>
-          )}
-
-          {/* Mic Control Button at Bottom Right */}
-          <button
-            onClick={toggleMic}
-            title={isLiveMic ? "Mic is live - Click to mute" : "Mic is muted - Click to turn on or hold Spacebar"}
-            className={`flex items-center gap-2 rounded-full px-4 py-4 text-xs font-bold transition active:scale-95 touch-manipulation shadow-xl ${
-              isLiveMic
-                ? "bg-flame text-forest-night shadow-flame/30 animate-pulse border border-white/20"
-                : "bg-amber-500/20 text-flame hover:bg-flame/30 border border-flame/40 backdrop-blur-xl"
-            }`}
-          >
-            {isLiveMic ? <Mic size={16} /> : <MicOff size={16} />}
-          </button>
-        </div>
+      {/* Bottom Center: Hold-to-Talk / Toggle Mic Button */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-auto flex flex-col items-center gap-1.5">
+        <button
+          onClick={toggleMic}
+          onMouseDown={() => {
+            if (!hasMicPermission) requestMicPermission();
+            else startSpeaking();
+          }}
+          onMouseUp={() => stopSpeaking()}
+          onMouseLeave={() => stopSpeaking()}
+          onTouchStart={(e) => {
+            e.preventDefault();
+            if (!hasMicPermission) requestMicPermission();
+            else startSpeaking();
+          }}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            stopSpeaking();
+          }}
+          onTouchCancel={() => stopSpeaking()}
+          title={isLiveMic ? "Mic live - Tap to mute or release" : "Mic muted - Tap or HOLD to speak"}
+          className={`grid h-14 w-14 place-items-center rounded-full transition-all duration-300 active:scale-90 touch-manipulation shadow-2xl select-none ${
+            isLiveMic
+              ? "bg-flame text-forest-night shadow-flame/40 animate-pulse border-2 border-white/40 scale-105"
+              : "bg-forest-night/90 text-flame hover:bg-forest-night border border-flame/40 backdrop-blur-2xl"
+          }`}
+        >
+          {isLiveMic ? <Mic size={22} /> : <MicOff size={22} />}
+        </button>
+        <span className="text-[0.6rem] text-smoke/70 uppercase tracking-widest font-mono hidden sm:inline">
+          {isLiveMic ? "Mic Live" : "Hold or Tap"}
+        </span>
       </div>
     </div>
   );
