@@ -374,65 +374,33 @@ export default function Campfire({
       // Layered Additive Flames (Lighter / Screen Blend)
       context.globalCompositeOperation = "lighter";
 
-      drawFlameTongue(centerX, centerY, -25 * baseIntensity, 0, 1.25, 1.08, [
-        "rgba(255, 255, 230, 0.98)",
-        "rgba(255, 175, 45, 0.88)",
-        "rgba(240, 65, 15, 0.06)",
+      // Outer Deep Flame Tongue
+      drawFlameTongue(centerX, centerY, -22 * baseIntensity, 0, 1.35, 1.15, [
+        "rgba(255, 180, 50, 0.95)",
+        "rgba(245, 110, 20, 0.75)",
+        "rgba(200, 45, 10, 0.04)",
       ], 0);
 
-      drawFlameTongue(centerX, centerY, 25 * baseIntensity, -10, 1.1, 0.98, [
-        "rgba(255, 245, 185, 0.95)",
-        "rgba(255, 150, 35, 0.8)",
-        "rgba(220, 55, 10, 0.05)",
+      // Core Warm Flame Tongue
+      drawFlameTongue(centerX, centerY, 20 * baseIntensity, -12, 1.15, 1.05, [
+        "rgba(255, 215, 100, 0.95)",
+        "rgba(255, 140, 30, 0.8)",
+        "rgba(210, 50, 10, 0.05)",
       ], 2.2);
 
-      drawFlameTongue(centerX, centerY, 0, 14, 0.9, 0.82, [
-        "rgba(255, 255, 245, 0.95)",
-        "rgba(255, 200, 60, 0.72)",
-        "rgba(200, 50, 10, 0.04)",
+      // Inner Hot Core Tendril
+      drawFlameTongue(centerX, centerY, 0, 10, 0.85, 0.85, [
+        "rgba(255, 245, 180, 0.95)",
+        "rgba(255, 175, 45, 0.75)",
+        "rgba(190, 40, 10, 0.03)",
       ], 4.4);
 
-      // Spawn Fire Core Particles
-      const spawnRate = Math.max(3, Math.round(7.0 * baseIntensity));
-      for (let i = 0; i < spawnRate && particles.length < 280; i += 1) {
-        particles.push(createParticle());
-      }
-
       // Spawn Full-screen Embers
-      if (Math.random() < 0.4 * baseIntensity && embers.length < 140) {
+      if (Math.random() < 0.45 * baseIntensity && embers.length < 160) {
         embers.push(createEmber());
       }
 
-      // Render Fire Core Particles
-      particles = particles.filter((particle) => {
-        particle.life -= 1;
-        if (particle.life <= 0) return false;
-
-        particle.x += particle.vx;
-        particle.y += particle.vy;
-
-        const lifeRatio = clamp(particle.life / particle.maxLife, 0, 1);
-        const currentSize = Math.max(0.5, particle.size * Math.sin(lifeRatio * Math.PI));
-        const hue = particle.hue - (1 - lifeRatio) * 45;
-        const saturation = 100 - (1 - lifeRatio) * 25;
-        const lightness = Math.max(36, 68 + lifeRatio * 25 - (1 - lifeRatio) * 40);
-        const opacity = Math.min(1, lifeRatio * 2.2, (1 - lifeRatio) * 2.0);
-
-        context.fillStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, ${opacity * 0.45})`;
-        context.beginPath();
-        context.arc(particle.x, particle.y, currentSize, 0, Math.PI * 2);
-        context.fill();
-
-        if (lifeRatio > 0.4) {
-          context.fillStyle = `hsla(${hue + 10}, 100%, ${Math.min(94, lightness + 18)}%, ${opacity * 0.25})`;
-          context.beginPath();
-          context.arc(particle.x, particle.y, currentSize * 1.5, 0, Math.PI * 2);
-          context.fill();
-        }
-        return true;
-      });
-
-      // Render Full-Screen Swirling Embers
+      // Render Delicate Full-Screen Swirling Embers
       embers = embers.filter((ember) => {
         ember.life -= ember.decay;
         if (ember.life <= 0 || ember.y < -20) return false;
@@ -440,15 +408,15 @@ export default function Campfire({
         ember.x += ember.vx + Math.sin(time * ember.swaySpeed + ember.y * 0.015) * ember.swayAmp;
         ember.y += ember.vy;
 
-        const glow = Math.sin(time * 0.12 + ember.x) * 0.2 + 0.8;
-        context.fillStyle = `rgba(255, 215, 110, ${ember.life * glow * 0.95})`;
+        const glow = Math.sin(time * 0.12 + ember.x) * 0.25 + 0.75;
+        context.fillStyle = `rgba(255, 190, 80, ${ember.life * glow * 0.9})`;
         context.beginPath();
         context.arc(ember.x, ember.y, ember.size, 0, Math.PI * 2);
         context.fill();
 
-        context.fillStyle = `rgba(255, 130, 25, ${ember.life * glow * 0.45})`;
+        context.fillStyle = `rgba(240, 95, 20, ${ember.life * glow * 0.4})`;
         context.beginPath();
-        context.arc(ember.x, ember.y, ember.size * 1.8, 0, Math.PI * 2);
+        context.arc(ember.x, ember.y, ember.size * 1.6, 0, Math.PI * 2);
         context.fill();
 
         return true;

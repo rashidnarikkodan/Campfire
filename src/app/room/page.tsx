@@ -169,6 +169,11 @@ function RoomContent() {
         </div>
       )}
 
+      {/* Fixed 100% Full-Screen Ambient Campfire Canvas Layer */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <Campfire intensity={intensity} onStoke={stokeFire} fullScreen />
+      </div>
+
       {/* Floating Top-Right Chat/Fire Switcher Button Below Header */}
       <div className="fixed top-14 right-4 z-50 pointer-events-auto">
         <button
@@ -199,15 +204,14 @@ function RoomContent() {
         </button>
       </div>
 
-      {/* Main Viewport Workspace Layer (VS Code Style Resizable Split) */}
+      {/* Main Viewport Workspace Layer */}
       <div className="relative z-10 flex flex-1 min-h-0 w-full overflow-hidden">
-        {/* Left Campfire Stage Section: Dynamic Width, Resizes canvas & 3D peer circle when chat opens */}
-        <section className="relative flex-1 h-full min-w-0 overflow-hidden transition-all duration-300 ease-in-out">
-          {/* Campfire Canvas Stage */}
-          <div className="absolute inset-0 z-0 overflow-hidden">
-            <Campfire intensity={intensity} onStoke={stokeFire} fullScreen />
-          </div>
-
+        {/* Left Campfire Stage Section */}
+        <section
+          className={`relative flex-1 h-full w-full overflow-hidden transition-all duration-300 ease-in-out ${
+            activeTab === "chat" ? "md:pr-[22rem] lg:pr-[26rem]" : "pr-0"
+          }`}
+        >
           {/* Peer 3D Campfire Circle Overlay */}
           <PeerList socket={socket} roomId={roomId} onUpdateName={updateDisplayName} />
 
@@ -250,12 +254,10 @@ function RoomContent() {
           )}
         </section>
 
-        {/* Right Section: VS Code Style Chat Panel (Pushes Left Stage, Does NOT Overlap Fire) */}
+        {/* Right Section: Sliding Translucent Glassmorphism Chat Panel */}
         <aside
-          className={`h-full shrink-0 border-l border-ash/15 bg-forest-night/95 backdrop-blur-2xl transition-all duration-300 ease-in-out overflow-hidden shadow-2xl z-20 ${
-            activeTab === "chat"
-              ? "w-full sm:w-[22rem] lg:w-[26rem] opacity-100"
-              : "w-0 opacity-0 pointer-events-none border-none"
+          className={`fixed top-12 right-0 bottom-0 z-40 w-full sm:w-[22rem] lg:w-[26rem] flex flex-col bg-forest-night/90 backdrop-blur-2xl border-l border-ash/15 shadow-2xl transition-transform duration-300 ease-in-out ${
+            activeTab === "chat" ? "translate-x-0" : "translate-x-full pointer-events-none"
           }`}
         >
           <ChatPanel socket={socket} roomId={roomId} onStoke={stokeFire} />
