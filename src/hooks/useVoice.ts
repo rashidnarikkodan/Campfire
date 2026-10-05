@@ -34,6 +34,12 @@ function getIceServers(): RTCConfiguration {
     }
   }
 
+  if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
+    console.warn(
+      "[WebRTC Production Blocker Warning] NEXT_PUBLIC_TURN_URLS is not configured. Peers behind strict symmetric NAT or enterprise cellular firewalls will fail WebRTC audio connection."
+    );
+  }
+
   return { iceServers: defaultStun };
 }
 
@@ -293,13 +299,33 @@ export function useVoice({ socket, roomId }: UseVoiceProps) {
       pc.ontrack = null;
       pc.onnegotiationneeded = null;
       pc.onconnectionstatechange = null;
-      pc.close();
+      pc.oniceconnectionstatechange = null;
+      pc.onsignalingstatechange = null;
+
+      try {
+        pc.getSenders().forEach((sender) => {
+          if (sender.track) {
+            sender.track.stop();
+          }
+        });
+      } catch (err) {
+        console.warn(`Error stopping senders for peer ${peerId}:`, err);
+      }
+
+      try {
+        pc.close();
+      } catch (err) {
+        console.warn(`Error closing peer connection for ${peerId}:`, err);
+      }
       pcsRef.current.delete(peerId);
     }
 
     const audio = remoteAudioRef.current.get(peerId);
     if (audio) {
       audio.pause();
+      if (audio.srcObject instanceof MediaStream) {
+        audio.srcObject.getTracks().forEach((track) => track.stop());
+      }
       audio.srcObject = null;
       if (audio.parentNode) {
         audio.parentNode.removeChild(audio);
@@ -316,7 +342,9 @@ export function useVoice({ socket, roomId }: UseVoiceProps) {
       pendingIceCandidatesRef.current.delete(peerId);
       for (const candidate of candidates) {
         try {
-          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          if (pc.signalingState !== "closed" && pc.remoteDescription) {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          }
         } catch (err) {
           console.warn(`Error adding queued ICE candidate for ${peerId}:`, err);
         }
@@ -432,16 +460,29 @@ export function useVoice({ socket, roomId }: UseVoiceProps) {
         remoteTrack.onunmute = playAudio;
       };
 
+      let disconnectTimer: NodeJS.Timeout | null = null;
+
       pc.onconnectionstatechange = () => {
-        if (pc.connectionState === "failed") {
+        const state = pc.connectionState;
+        if (state === "connected") {
+          if (disconnectTimer) {
+            clearTimeout(disconnectTimer);
+            disconnectTimer = null;
+          }
+        } else if (state === "failed") {
           console.warn(`Peer Connection with ${peerId} failed, attempting restart...`);
           try {
-            pc.restartIce();
+            if (pc.signalingState === "stable") {
+              pc.restartIce();
+            } else {
+              removeConnection(peerId);
+            }
           } catch {
             removeConnection(peerId);
           }
-        } else if (pc.connectionState === "disconnected") {
-          setTimeout(() => {
+        } else if (state === "disconnected") {
+          if (disconnectTimer) clearTimeout(disconnectTimer);
+          disconnectTimer = setTimeout(() => {
             const currentPc = pcsRef.current.get(peerId);
             if (
               currentPc &&
@@ -449,7 +490,24 @@ export function useVoice({ socket, roomId }: UseVoiceProps) {
             ) {
               removeConnection(peerId);
             }
-          }, 8000);
+          }, 6000);
+        } else if (state === "closed") {
+          removeConnection(peerId);
+        }
+      };
+
+      pc.oniceconnectionstatechange = () => {
+        const iceState = pc.iceConnectionState;
+        if (iceState === "failed") {
+          try {
+            if (pc.signalingState === "stable") {
+              pc.restartIce();
+            }
+          } catch {
+            removeConnection(peerId);
+          }
+        } else if (iceState === "closed") {
+          removeConnection(peerId);
         }
       };
 
@@ -560,6 +618,13 @@ export function useVoice({ socket, roomId }: UseVoiceProps) {
     if (!socket) return;
 
     const onRoomJoined = ({ peers }: { peers: PeerInfo[] }) => {
+      const activeSocketIds = new Set(peers.map((p) => p.socketId));
+      pcsRef.current.forEach((_, peerId) => {
+        if (!activeSocketIds.has(peerId)) {
+          removeConnection(peerId);
+        }
+      });
+
       peers.forEach((peer) => {
         if (peer.socketId !== socket.id) {
           initiateConnection(peer.socketId);

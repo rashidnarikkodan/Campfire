@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 import { MAX_MESSAGE_LENGTH } from "@/lib/constants";
 import { useRoomStore, type Message } from "@/store/roomStore";
-import { useUserStore } from "@/store/userStore";
 import { ambientAudio } from "@/lib/ambientAudio";
 
 export function useChat({
@@ -17,9 +16,10 @@ export function useChat({
   const messages = useRoomStore((s) => s.messages);
   const addMessage = useRoomStore((s) => s.addMessage);
   const typingUsers = useRoomStore((s) => s.typingUsers);
-  const displayName = useUserStore((s) => s.displayName);
+  const [chatError, setChatError] = useState<string | null>(null);
 
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const errorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!socket) return;
@@ -31,9 +31,31 @@ export function useChat({
       }
     };
 
+    const onJoined = ({ recentMessages }: { recentMessages?: Message[] }) => {
+      if (Array.isArray(recentMessages)) {
+        recentMessages.forEach((msg) => addMessage(msg));
+      }
+    };
+
+    const onError = (err: { code?: string; message?: string }) => {
+      if (err?.message) {
+        setChatError(err.message);
+        if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
+        errorTimeoutRef.current = setTimeout(() => {
+          setChatError(null);
+        }, 4000);
+      }
+    };
+
     socket.on("chat:message", onMessage);
+    socket.on("room:joined", onJoined);
+    socket.on("chat:error", onError);
+
     return () => {
       socket.off("chat:message", onMessage);
+      socket.off("room:joined", onJoined);
+      socket.off("chat:error", onError);
+      if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
     };
   }, [socket, addMessage]);
 
@@ -49,13 +71,13 @@ export function useChat({
         socket.emit("chat:typing", { isTyping: false });
       }
 
+      setChatError(null);
       socket.emit("chat:send", {
         roomId,
         text: trimmed,
-        senderName: displayName || "Stranger",
       });
     },
-    [socket, roomId, displayName]
+    [socket, roomId]
   );
 
   const sendTyping = useCallback(
@@ -77,5 +99,5 @@ export function useChat({
     [socket, roomId]
   );
 
-  return { messages, typingUsers, sendMessage, sendTyping };
+  return { messages, typingUsers, chatError, sendMessage, sendTyping };
 }

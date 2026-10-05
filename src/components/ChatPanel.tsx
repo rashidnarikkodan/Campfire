@@ -28,7 +28,7 @@ const QUICK_REACTIONS = [
 ];
 
 export default function ChatPanel({ socket, roomId, onStoke }: ChatPanelProps) {
-  const { messages, typingUsers, sendMessage, sendTyping } = useChat({ socket, roomId });
+  const { messages, typingUsers, chatError, sendMessage, sendTyping } = useChat({ socket, roomId });
   const [text, setText] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
   const remaining = useMemo(() => MAX_MESSAGE_LENGTH - text.length, [text]);
@@ -83,6 +83,13 @@ export default function ChatPanel({ socket, roomId, onStoke }: ChatPanelProps) {
           </div>
         </div>
       </header>
+
+      {/* Chat Error Banner */}
+      {chatError && (
+        <div className="px-3 py-1.5 bg-amber-950/60 border-b border-amber-500/30 text-[0.7rem] font-medium text-amber-200 animate-fade-up">
+          {chatError}
+        </div>
+      )}
 
       {/* Messages Scroll Area */}
       <div className="scrollbar-none flex-1 space-y-3 overflow-y-auto p-3 sm:p-4">
