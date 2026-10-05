@@ -482,6 +482,9 @@ export function useVoice({ socket, roomId }: UseVoiceProps) {
           try {
             if (pc.signalingState === "stable") {
               pc.restartIce();
+              if (pc.onnegotiationneeded) {
+                pc.onnegotiationneeded(new Event("negotiationneeded"));
+              }
             } else {
               removeConnection(peerId);
             }
@@ -510,6 +513,9 @@ export function useVoice({ socket, roomId }: UseVoiceProps) {
           try {
             if (pc.signalingState === "stable") {
               pc.restartIce();
+              if (pc.onnegotiationneeded) {
+                pc.onnegotiationneeded(new Event("negotiationneeded"));
+              }
             }
           } catch {
             removeConnection(peerId);
@@ -708,11 +714,16 @@ export function useVoice({ socket, roomId }: UseVoiceProps) {
       const pc = pcsRef.current.get(fromSocketId);
       if (pc) {
         if (ignoreOfferRef.current.get(fromSocketId)) return;
-        if (pc.signalingState !== "have-local-offer") return;
+        if (pc.signalingState !== "have-local-offer") {
+          // Connection state is already stable or offer was completed; ignore redundant answer safely
+          return;
+        }
         try {
           await pc.setRemoteDescription(new RTCSessionDescription(sdp));
           await flushIceCandidates(fromSocketId, pc);
         } catch (err) {
+          // Log as debug level if signaling state changed concurrently
+          if (pc.signalingState === "stable") return;
           console.warn(`Signaling warning handling answer from ${fromSocketId}:`, err);
         }
       }
