@@ -701,8 +701,6 @@ export function useVoice({ socket, roomId }: UseVoiceProps) {
         });
       } catch (err) {
         console.warn(`Signaling warning answering offer from ${fromSocketId}:`, err);
-      } finally {
-        ignoreOfferRef.current.set(fromSocketId, false);
       }
     };
 
@@ -715,14 +713,18 @@ export function useVoice({ socket, roomId }: UseVoiceProps) {
     }) => {
       const pc = pcsRef.current.get(fromSocketId);
       if (pc) {
-        if (pc.signalingState !== "have-local-offer") return;
+        if (ignoreOfferRef.current.get(fromSocketId)) return;
+        if (pc.signalingState !== "have-local-offer") {
+          // Connection state is already stable or offer was completed; ignore redundant answer safely
+          return;
+        }
         try {
           await pc.setRemoteDescription(new RTCSessionDescription(sdp));
           await flushIceCandidates(fromSocketId, pc);
         } catch (err) {
+          // Log as debug level if signaling state changed concurrently
+          if (pc.signalingState === "stable") return;
           console.warn(`Signaling warning handling answer from ${fromSocketId}:`, err);
-        } finally {
-          ignoreOfferRef.current.set(fromSocketId, false);
         }
       }
     };
