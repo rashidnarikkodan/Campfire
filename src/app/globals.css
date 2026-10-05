@@ -1,19 +1,20 @@
 @import "tailwindcss";
 
 @theme {
-  --color-forest-night: #090b0a;
-  --color-forest-floor: #10120f;
-  --color-ash: #d9d1c4;
-  --color-smoke: #8d887f;
-  --color-coal: #17130f;
-  --color-ember: #ff7a1a;
-  --color-flame: #ffb347;
-  --color-flame-soft: #ffd29b;
+  --color-forest-night: #080a09;
+  --color-forest-floor: #0e110e;
+  --color-ash: #eae4d8;
+  --color-smoke: #9e978c;
+  --color-coal: #15120e;
+  --color-ember: #ff7315;
+  --color-flame: #ffb03a;
+  --color-flame-soft: #ffe0b2;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --animate-fade-up: fade-up 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-flicker: flicker 3.5s ease-in-out infinite;
   --animate-glow-breathe: glow-breathe 4s ease-in-out infinite;
-  --animate-shimmer: shimmer 2.6s linear infinite;
+  --animate-shimmer: shimmer 2.8s linear infinite;
+  --animate-spin-slow: spin 8s linear infinite;
 }
 
 :root {
@@ -38,10 +39,7 @@ body {
   min-height: 100vh;
   margin: 0;
   overflow-x: hidden;
-  background:
-    radial-gradient(circle at 50% 70%, rgba(255, 122, 26, 0.16), transparent 34rem),
-    radial-gradient(circle at 18% 12%, rgba(100, 82, 50, 0.2), transparent 24rem),
-    linear-gradient(180deg, #080908 0%, #0f100d 48%, #070807 100%);
+  background-color: var(--color-forest-night);
   color: var(--text-main);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -56,24 +54,26 @@ input {
 
 button {
   appearance: none;
+  cursor: pointer;
 }
 
 button:focus-visible,
 a:focus-visible,
-textarea:focus-visible {
-  outline: 2px solid rgba(255, 179, 71, 0.72);
-  outline-offset: 4px;
+textarea:focus-visible,
+input:focus-visible {
+  outline: 2px solid rgba(255, 176, 58, 0.75);
+  outline-offset: 3px;
 }
 
 ::selection {
-  background: rgba(255, 122, 26, 0.35);
-  color: var(--color-ash);
+  background: rgba(255, 115, 21, 0.4);
+  color: #ffffff;
 }
 
 @keyframes fade-up {
   from {
     opacity: 0;
-    transform: translateY(24px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
@@ -84,31 +84,31 @@ textarea:focus-visible {
 @keyframes flicker {
   0%,
   100% {
-    opacity: 0.86;
-    transform: scale(1) rotate(-0.4deg);
+    opacity: 0.88;
+    transform: scale(1) rotate(-0.3deg);
   }
   25% {
     opacity: 0.98;
-    transform: scale(1.02) rotate(0.3deg);
+    transform: scale(1.02) rotate(0.2deg);
   }
   50% {
     opacity: 1;
     transform: scale(1.03);
   }
   75% {
-    opacity: 0.9;
-    transform: scale(0.99) rotate(0.4deg);
+    opacity: 0.92;
+    transform: scale(0.99) rotate(0.3deg);
   }
 }
 
 @keyframes glow-breathe {
   0%,
   100% {
-    opacity: 0.42;
+    opacity: 0.45;
     transform: scale(1);
   }
   50% {
-    opacity: 0.78;
+    opacity: 0.8;
     transform: scale(1.08);
   }
 }
@@ -122,57 +122,21 @@ textarea:focus-visible {
   }
 }
 
-.environment {
-  position: relative;
-  isolation: isolate;
-}
-
-.environment::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -2;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 50% 62%, rgba(255, 179, 71, 0.16), transparent 20rem),
-    radial-gradient(circle at 50% 88%, rgba(255, 122, 26, 0.14), transparent 32rem),
-    linear-gradient(120deg, rgba(26, 34, 22, 0.42), transparent 42%, rgba(43, 25, 14, 0.28));
-}
-
-.environment::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  opacity: 0.25;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
-  background-size: 72px 72px;
-  mask-image: radial-gradient(circle at 50% 52%, black, transparent 72%);
-}
-
 .warm-button {
-  background: linear-gradient(135deg, #ff7a1a 0%, #ffb347 50%, #ff7a1a 100%);
+  background: linear-gradient(135deg, #ff7315 0%, #ffb03a 50%, #ff7315 100%);
   background-size: 200% auto;
-  color: #100c09;
-  animation: shimmer 2.8s linear infinite;
-  transition: transform 180ms ease, filter 180ms ease;
+  color: #0c0907;
+  animation: shimmer 3s linear infinite;
+  transition: transform 180ms ease, filter 180ms ease, box-shadow 180ms ease;
 }
 
 .warm-button:hover {
-  filter: brightness(1.08);
+  filter: brightness(1.1);
   transform: translateY(-1px);
 }
 
 .warm-button:active {
   transform: translateY(1px) scale(0.98);
-}
-
-.soft-surface {
-  background: rgba(12, 13, 11, 0.12);
-  backdrop-filter: blur(16px);
 }
 
 .scrollbar-none {
@@ -181,18 +145,6 @@ textarea:focus-visible {
 
 .scrollbar-none::-webkit-scrollbar {
   display: none;
-}
-
-.scroll-fade {
-  opacity: 0;
-  transform: translateY(28px);
-  transition: opacity 850ms cubic-bezier(0.22, 1, 0.36, 1),
-    transform 850ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.scroll-fade.visible {
-  opacity: 1;
-  transform: translateY(0);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -5,7 +5,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import next from "next";
 
-import { registerRoomHandlers, handleDisconnect } from "./src/server/roomManager";
+import { registerRoomHandlers, handleDisconnect, getStats } from "./src/server/roomManager";
 import { registerChatHandlers } from "./src/server/chatHandler";
 import { registerSignalHandlers } from "./src/server/signalHandler";
 import { registerModerationHandlers } from "./src/server/moderationManager";
@@ -24,7 +24,11 @@ nextApp.prepare().then(() => {
   app.use(express.json());
 
   app.get("/health", (_req, res) => {
-    res.json({ status: "ok", uptime: process.uptime() });
+    res.json({ status: "ok", uptime: process.uptime(), ...getStats() });
+  });
+
+  app.get("/api/stats", (_req, res) => {
+    res.json(getStats());
   });
 
   const httpServer = createServer(app);
@@ -34,19 +38,18 @@ nextApp.prepare().then(() => {
       origin: "*",
       methods: ["GET", "POST"],
     },
+    pingTimeout: 20000,
+    pingInterval: 10000,
   });
 
   io.on("connection", (socket) => {
-    console.log(`[connect] ${socket.id}`);
-
     registerRoomHandlers(io, socket);
     registerChatHandlers(io, socket);
     registerSignalHandlers(io, socket);
     registerModerationHandlers(io, socket);
 
     socket.on("disconnect", (reason) => {
-      console.log(`[disconnect] ${socket.id} — ${reason}`);
-      handleDisconnect(socket);
+      handleDisconnect(io, socket);
     });
   });
 
