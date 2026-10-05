@@ -15,10 +15,19 @@ function getIceServers(): RTCConfiguration {
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
     { urls: "stun:stun2.l.google.com:19302" },
-    { urls: "stun:stun3.l.google.com:19302" },
-    { urls: "stun:stun4.l.google.com:19302" },
     { urls: "stun:global.stun.twilio.com:3478" },
   ];
+
+  // Default OpenRelay TURN server (free public TURN relay)
+  const defaultTurn: RTCIceServer = {
+    urls: [
+      "turn:openrelay.metered.ca:80",
+      "turn:openrelay.metered.ca:443",
+      "turn:openrelay.metered.ca:443?transport=tcp",
+    ],
+    username: "openrelayproject",
+    credential: "openrelayproject",
+  };
 
   const turnUrls = process.env.NEXT_PUBLIC_TURN_URLS;
   const turnUsername = process.env.NEXT_PUBLIC_TURN_USERNAME;
@@ -34,13 +43,8 @@ function getIceServers(): RTCConfiguration {
     }
   }
 
-  if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
-    console.warn(
-      "[WebRTC Production Blocker Warning] NEXT_PUBLIC_TURN_URLS is not configured. Peers behind strict symmetric NAT or enterprise cellular firewalls will fail WebRTC audio connection."
-    );
-  }
-
-  return { iceServers: defaultStun };
+  // Fallback to default public TURN relay so voice works seamlessly across cellular data & firewalls
+  return { iceServers: [...defaultStun, defaultTurn] };
 }
 
 export function useVoice({ socket, roomId }: UseVoiceProps) {
