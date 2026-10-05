@@ -32,3 +32,7 @@ export function cleanupRateLimits(socketId: string): void {
     }
   }
 }
+
+export function resetRateLimitsForTesting(): void {
+  eventRecords.clear();
+}
