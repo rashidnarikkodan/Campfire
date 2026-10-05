@@ -1,7 +1,7 @@
 import { Server as SocketIOServer, Socket } from "socket.io";
-import { REPORT_COOLDOWN_MS, REPORT_THRESHOLD } from "../lib/constants";
-import { socketRoom, socketSession } from "./roomManager";
-import { checkRateLimit } from "./rateLimiter";
+import { REPORT_COOLDOWN_MS, REPORT_THRESHOLD } from "../lib/constants.js";
+import { socketRoom, socketSession } from "./roomManager.js";
+import { checkRateLimit } from "./rateLimiter.js";
 
 const reportScores = new Map<string, Set<string>>();
 const cooldowns = new Map<string, number>();

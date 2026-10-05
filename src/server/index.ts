@@ -4,13 +4,13 @@ import { Server as SocketIOServer } from "socket.io";
 import cors from "cors";
 import dotenv from "dotenv";
 
-import { registerRoomHandlers, handleDisconnect, getStats } from "./roomManager";
-import { registerChatHandlers } from "./chatHandler";
-import { registerSignalHandlers } from "./signalHandler";
-import { registerModerationHandlers } from "./moderationManager";
-import { checkIpRateLimit, registerIpConnection, unregisterIpConnection } from "./rateLimiter";
-import { logInfo, logWarn } from "./logger";
-import { getMetricsSnapshot, incrementMetric } from "./metrics";
+import { registerRoomHandlers, handleDisconnect, getStats } from "./roomManager.js";
+import { registerChatHandlers } from "./chatHandler.js";
+import { registerSignalHandlers } from "./signalHandler.js";
+import { registerModerationHandlers } from "./moderationManager.js";
+import { checkIpRateLimit, registerIpConnection, unregisterIpConnection } from "./rateLimiter.js";
+import { logInfo, logWarn } from "./logger.js";
+import { getMetricsSnapshot, incrementMetric } from "./metrics.js";
 
 dotenv.config();
 

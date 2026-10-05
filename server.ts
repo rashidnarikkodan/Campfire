@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
-import { createCampfireServer } from "./src/server/index";
-import { logInfo, logWarn } from "./src/server/logger";
+import { createCampfireServer } from "./src/server/index.js";
+import { logInfo, logWarn } from "./src/server/logger.js";
 
 dotenv.config();
 

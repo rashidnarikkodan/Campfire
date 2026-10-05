@@ -1,10 +1,10 @@
 import { randomUUID } from "crypto";
 import { Server as SocketIOServer, Socket } from "socket.io";
-import { MAX_MESSAGE_LENGTH, MAX_PAYLOAD_BYTES } from "../lib/constants";
-import { socketRoom, socketSession, rooms, addRoomMessage } from "./roomManager";
-import { checkRateLimit } from "./rateLimiter";
+import { MAX_MESSAGE_LENGTH, MAX_PAYLOAD_BYTES } from "../lib/constants.js";
+import { socketRoom, socketSession, rooms, addRoomMessage } from "./roomManager.js";
+import { checkRateLimit } from "./rateLimiter.js";
 
-import { incrementMetric } from "./metrics";
+import { incrementMetric } from "./metrics.js";
 
 export function sanitizeText(input: string): string {
   // Strip control characters & null bytes, keeping printable characters & emojis

@@ -1,6 +1,6 @@
 import { Server as SocketIOServer, Socket } from "socket.io";
-import { socketRoom, socketSession } from "./roomManager";
-import { checkRateLimit } from "./rateLimiter";
+import { socketRoom, socketSession } from "./roomManager.js";
+import { checkRateLimit } from "./rateLimiter.js";
 
 type SignalPayload = {
   targetSocketId?: unknown;

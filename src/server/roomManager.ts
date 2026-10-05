@@ -1,9 +1,9 @@
 import { randomUUID } from "crypto";
 import { Server as SocketIOServer, Socket } from "socket.io";
-import { MAX_ROOM_SIZE, MAX_CHAT_HISTORY_PER_ROOM } from "../lib/constants";
-import { getJoinCooldownRemaining } from "./moderationManager";
-import { generateName } from "../lib/nameGenerator";
-import { checkRateLimit, cleanupRateLimits } from "./rateLimiter";
+import { MAX_ROOM_SIZE, MAX_CHAT_HISTORY_PER_ROOM } from "../lib/constants.js";
+import { getJoinCooldownRemaining } from "./moderationManager.js";
+import { generateName } from "../lib/nameGenerator.js";
+import { checkRateLimit, cleanupRateLimits } from "./rateLimiter.js";
 import {
   getOrCreateSession,
   getSession,
@@ -12,8 +12,8 @@ import {
   pruneExpiredSessions,
   type PresenceState,
   type ParticipantSession,
-} from "./sessionManager";
-import { incrementMetric, recordCampfireDuration } from "./metrics";
+} from "./sessionManager.js";
+import { incrementMetric, recordCampfireDuration } from "./metrics.js";
 
 export interface PeerInfo {
   socketId: string;

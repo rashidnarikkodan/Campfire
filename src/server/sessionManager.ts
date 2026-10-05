@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { generateName } from "../lib/nameGenerator";
+import { generateName } from "../lib/nameGenerator.js";
 
 export type PresenceState = "JOINING" | "CONNECTED" | "RECONNECTING" | "DISCONNECTED";
 
