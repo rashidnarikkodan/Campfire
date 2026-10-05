@@ -28,9 +28,6 @@ export function useRoom({
   const setStokeCount = useRoomStore((s) => s.setStokeCount);
   const reset = useRoomStore((s) => s.reset);
 
-  const displayName = useUserStore((s) => s.displayName);
-  const sessionId = useUserStore((s) => s.sessionId);
-
   useEffect(() => {
     if (!socket) return;
 
@@ -55,16 +52,22 @@ export function useRoom({
       roomId,
       peers,
       stokeCount,
+      sessionId: serverSessionId,
     }: {
       roomId: string;
       peerInfo: PeerInfo;
       peers: PeerInfo[];
       stokeCount?: number;
+      sessionId?: string;
     }) => {
       setRoomId(roomId);
       setPeers(peers);
       if (typeof stokeCount === "number") {
         setStokeCount(stokeCount);
+      }
+      if (serverSessionId && typeof window !== "undefined") {
+        useUserStore.setState({ sessionId: serverSessionId });
+        window.localStorage.setItem("internet-campfire-session", serverSessionId);
       }
     };
 
@@ -72,18 +75,46 @@ export function useRoom({
       addPeer(peer);
     };
 
-    const onPeerLeft = ({ socketId }: { socketId: string; displayName: string }) => {
-      removePeer(socketId);
+    const onPeerPresence = ({
+      socketId,
+      sessionId,
+      displayName,
+      presenceState,
+    }: {
+      socketId: string;
+      sessionId: string;
+      displayName: string;
+      presenceState: "JOINING" | "CONNECTED" | "RECONNECTING" | "DISCONNECTED";
+    }) => {
+      updatePeer(sessionId || socketId, {
+        socketId,
+        sessionId,
+        displayName,
+        presenceState,
+      });
+    };
+
+    const onPeerLeft = ({
+      socketId,
+      sessionId,
+    }: {
+      socketId: string;
+      sessionId?: string;
+      displayName: string;
+    }) => {
+      removePeer(sessionId || socketId);
     };
 
     const onPeerUpdated = ({
       socketId,
+      sessionId,
       displayName,
     }: {
       socketId: string;
+      sessionId?: string;
       displayName: string;
     }) => {
-      updatePeer(socketId, { displayName });
+      updatePeer(sessionId || socketId, { displayName });
     };
 
     const onStoked = ({
@@ -113,6 +144,7 @@ export function useRoom({
 
     socket.on("room:joined", onJoined);
     socket.on("room:peer-joined", onPeerJoined);
+    socket.on("room:peer-presence", onPeerPresence);
     socket.on("room:peer-left", onPeerLeft);
     socket.on("room:peer-updated", onPeerUpdated);
     socket.on("campfire:stoked", onStoked);
@@ -122,6 +154,7 @@ export function useRoom({
       socket.off("connect", join);
       socket.off("room:joined", onJoined);
       socket.off("room:peer-joined", onPeerJoined);
+      socket.off("room:peer-presence", onPeerPresence);
       socket.off("room:peer-left", onPeerLeft);
       socket.off("room:peer-updated", onPeerUpdated);
       socket.off("campfire:stoked", onStoked);

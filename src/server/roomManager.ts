@@ -3,33 +3,59 @@ import { Server as SocketIOServer, Socket } from "socket.io";
 import { MAX_ROOM_SIZE } from "../lib/constants";
 import { getJoinCooldownRemaining } from "./moderationManager";
 import { generateName } from "../lib/nameGenerator";
+import { checkRateLimit, cleanupRateLimits } from "./rateLimiter";
+import {
+  getOrCreateSession,
+  getSession,
+  touchSession,
+  updateSessionName,
+  pruneExpiredSessions,
+  type PresenceState,
+  type ParticipantSession,
+} from "./sessionManager";
 
 export interface PeerInfo {
   socketId: string;
-  displayName: string;
   sessionId: string;
+  displayName: string;
+  presenceState: PresenceState;
   isSpeaking: boolean;
   isMuted: boolean;
   joinedAt: number;
+  lastSeenAt: number;
 }
 
 export interface Room {
   id: string;
   isPrivate: boolean;
-  peers: Map<string, PeerInfo>;
+  peers: Map<string, PeerInfo>; // Keyed by sessionId
   createdAt: number;
   lastStokedAt?: number;
   stokeCount: number;
 }
 
-// roomId → Room
+const RECONNECT_GRACE_MS = 20000; // 20 seconds reconnect grace period
+
+// roomId -> Room
 const rooms = new Map<string, Room>();
 
-// socketId → roomId
+// socketId -> roomId
 const socketRoom = new Map<string, string>();
 
-const ADJECTIVES = ["amber", "cedar", "birch", "ember", "quiet", "golden", "mossy", "silent", "pine", "dusk", "misty", "warm"];
-const NOUNS = ["hearth", "clearing", "grove", "campfire", "ridge", "brook", "dell", "shelter", "ember", "woods"];
+// socketId -> sessionId
+const socketSession = new Map<string, string>();
+
+// sessionId -> reconnect Timeout
+const reconnectTimers = new Map<string, NodeJS.Timeout>();
+
+const ADJECTIVES = [
+  "amber", "cedar", "birch", "ember", "quiet", "golden",
+  "mossy", "silent", "pine", "dusk", "misty", "warm"
+];
+const NOUNS = [
+  "hearth", "clearing", "grove", "campfire", "ridge",
+  "brook", "dell", "shelter", "ember", "woods"
+];
 
 function generateRoomId(): string {
   const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
@@ -42,9 +68,7 @@ function generateRoomId(): string {
   return code;
 }
 
-import { checkRateLimit, cleanupRateLimits } from "./rateLimiter";
-
-function findOrCreateRoom(targetRoomId?: unknown, isPrivate: boolean = false): string {
+export function findOrCreateRoom(targetRoomId?: unknown, isPrivate: boolean = false): string {
   if (typeof targetRoomId === "string" && targetRoomId.trim()) {
     const cleanId = targetRoomId.trim().toLowerCase().slice(0, 32);
     if (!rooms.has(cleanId)) {
@@ -59,9 +83,12 @@ function findOrCreateRoom(targetRoomId?: unknown, isPrivate: boolean = false): s
     return cleanId;
   }
 
-  // Find existing public room with space
-  for (const [roomId, room] of rooms) {
-    if (!room.isPrivate && room.peers.size < MAX_ROOM_SIZE) {
+  // Find existing public room with available capacity
+  for (const [roomId, room] of rooms.entries()) {
+    const activePeerCount = Array.from(room.peers.values()).filter(
+      (p) => p.presenceState === "CONNECTED" || p.presenceState === "JOINING" || p.presenceState === "RECONNECTING"
+    ).length;
+    if (!room.isPrivate && activePeerCount < MAX_ROOM_SIZE) {
       return roomId;
     }
   }
@@ -78,12 +105,12 @@ function findOrCreateRoom(targetRoomId?: unknown, isPrivate: boolean = false): s
   return newId;
 }
 
-function joinRoom(
+export function joinRoom(
   io: SocketIOServer,
   socket: Socket,
   roomId: string,
-  displayName?: unknown,
-  sessionId?: unknown,
+  displayNameCandidate?: unknown,
+  sessionIdCandidate?: unknown,
   isPrivate: boolean = false
 ) {
   const cooldownRemaining = getJoinCooldownRemaining(socket);
@@ -92,6 +119,7 @@ function joinRoom(
     return;
   }
 
+  // Ensure room exists
   if (!rooms.has(roomId)) {
     rooms.set(roomId, {
       id: roomId,
@@ -103,36 +131,72 @@ function joinRoom(
   }
 
   const room = rooms.get(roomId)!;
-  if (room.peers.size >= MAX_ROOM_SIZE) {
+
+  // Authoritative server session lookup & token issuance
+  const session = getOrCreateSession(
+    sessionIdCandidate || socket.handshake.auth?.sessionId,
+    displayNameCandidate || socket.handshake.auth?.displayName
+  );
+
+  const sessionId = session.sessionId;
+
+  // If reconnect timer is active for this session, clear it immediately
+  if (reconnectTimers.has(sessionId)) {
+    clearTimeout(reconnectTimers.get(sessionId)!);
+    reconnectTimers.delete(sessionId);
+  }
+
+  const existingPeer = room.peers.get(sessionId);
+
+  // Check room capacity if this is a NEW session joining the room
+  if (!existingPeer && room.peers.size >= MAX_ROOM_SIZE) {
     socket.emit("room:full", { roomId });
     return;
   }
 
-  leaveRoom(io, socket);
+  // If user was previously in a DIFFERENT room, leave that room first
+  const currentSocketRoom = socketRoom.get(socket.id);
+  if (currentSocketRoom && currentSocketRoom !== roomId) {
+    leaveRoom(io, socket, false);
+  }
 
-  const rawSessionId = typeof sessionId === "string" && sessionId.trim() ? sessionId.trim() : null;
-  const handshakeSessionId = typeof socket.handshake.auth?.sessionId === "string" && socket.handshake.auth.sessionId.trim() ? socket.handshake.auth.sessionId.trim() : null;
+  const now = Date.now();
 
-  const effectiveSessionId = rawSessionId || handshakeSessionId || socket.id;
+  // If duplicate socket connection exists for same session in this room, disconnect old socket
+  if (existingPeer && existingPeer.socketId !== socket.id) {
+    const oldSocketId = existingPeer.socketId;
+    socketRoom.delete(oldSocketId);
+    socketSession.delete(oldSocketId);
+    const oldSocket = io.sockets.sockets.get(oldSocketId);
+    if (oldSocket) {
+      oldSocket.leave(roomId);
+      oldSocket.emit("room:replaced", { reason: "Connected from another tab or device." });
+    }
+  }
 
-  const rawName = typeof displayName === "string" ? displayName.trim() : "";
-  const effectiveName = rawName.length > 0 ? rawName.slice(0, 32) : generateName(effectiveSessionId);
-
+  // Create or update PeerInfo in room.peers map (keyed by sessionId)
   const peerInfo: PeerInfo = {
     socketId: socket.id,
-    displayName: effectiveName,
-    sessionId: effectiveSessionId,
+    sessionId: session.sessionId,
+    displayName: session.displayName,
+    presenceState: "CONNECTED",
     isSpeaking: false,
     isMuted: false,
-    joinedAt: Date.now(),
+    joinedAt: existingPeer ? existingPeer.joinedAt : now,
+    lastSeenAt: now,
   };
 
-  room.peers.set(socket.id, peerInfo);
+  room.peers.set(sessionId, peerInfo);
   socketRoom.set(socket.id, roomId);
+  socketSession.set(socket.id, sessionId);
+  session.currentRoomId = roomId;
+  session.presenceState = "CONNECTED";
+  session.activeSocketId = socket.id;
+
   socket.join(roomId);
 
-  // Send current room state and existing peers to newly joined user
-  const peerList = Array.from(room.peers.values()).filter((p) => p.socketId !== socket.id);
+  // Filter peers list to send to joining client
+  const peerList = Array.from(room.peers.values()).filter((p) => p.sessionId !== sessionId);
 
   socket.emit("room:joined", {
     roomId,
@@ -140,56 +204,172 @@ function joinRoom(
     peers: peerList,
     createdAt: room.createdAt,
     stokeCount: room.stokeCount,
+    sessionId: session.sessionId,
   });
 
-  // Notify other peers in the room
-  socket.to(roomId).emit("room:peer-joined", {
-    peer: peerInfo,
-  });
+  if (existingPeer) {
+    // Session reconnected to existing room
+    socket.to(roomId).emit("room:peer-presence", {
+      socketId: socket.id,
+      sessionId: session.sessionId,
+      displayName: session.displayName,
+      presenceState: "CONNECTED",
+    });
+  } else {
+    // New peer joined room
+    socket.to(roomId).emit("room:peer-joined", {
+      peer: peerInfo,
+    });
 
-  // Send system message to room
-  io.to(roomId).emit("chat:message", {
-    id: randomUUID(),
-    senderId: "system",
-    senderName: "Campfire",
-    text: `${effectiveName} joined the fire circle.`,
-    timestamp: Date.now(),
-    isSystem: true,
-  });
+    // Send system announcement to room
+    io.to(roomId).emit("chat:message", {
+      id: randomUUID(),
+      senderId: "system",
+      senderName: "Campfire",
+      text: `${session.displayName} joined the fire circle.`,
+      timestamp: now,
+      isSystem: true,
+    });
+  }
 }
 
-function leaveRoom(io: SocketIOServer, socket: Socket) {
+export function leaveRoom(io: SocketIOServer, socket: Socket, isExplicitLeave: boolean = true) {
   const roomId = socketRoom.get(socket.id);
+  const sessionId = socketSession.get(socket.id);
   if (!roomId) return;
 
   const room = rooms.get(roomId);
-  if (room) {
-    const leavingPeer = room.peers.get(socket.id);
-    room.peers.delete(socket.id);
+  if (room && sessionId) {
+    const peer = room.peers.get(sessionId);
 
-    socket.to(roomId).emit("room:peer-left", {
-      socketId: socket.id,
-      displayName: leavingPeer?.displayName || "A stranger",
-    });
-
-    if (leavingPeer) {
-      io.to(roomId).emit("chat:message", {
-        id: randomUUID(),
-        senderId: "system",
-        senderName: "Campfire",
-        text: `${leavingPeer.displayName} stepped away into the night.`,
-        timestamp: Date.now(),
-        isSystem: true,
-      });
+    if (reconnectTimers.has(sessionId)) {
+      clearTimeout(reconnectTimers.get(sessionId)!);
+      reconnectTimers.delete(sessionId);
     }
 
-    if (room.peers.size === 0) {
-      rooms.delete(roomId);
+    if (peer && peer.socketId === socket.id) {
+      room.peers.delete(sessionId);
+      const session = getSession(sessionId);
+      if (session) {
+        session.currentRoomId = null;
+        session.presenceState = "DISCONNECTED";
+        session.activeSocketId = null;
+      }
+
+      socket.to(roomId).emit("room:peer-left", {
+        socketId: socket.id,
+        sessionId,
+        displayName: peer.displayName,
+      });
+
+      if (isExplicitLeave) {
+        io.to(roomId).emit("chat:message", {
+          id: randomUUID(),
+          senderId: "system",
+          senderName: "Campfire",
+          text: `${peer.displayName} stepped away into the night.`,
+          timestamp: Date.now(),
+          isSystem: true,
+        });
+      }
+
+      if (room.peers.size === 0) {
+        rooms.delete(roomId);
+      }
     }
   }
 
   socket.leave(roomId);
   socketRoom.delete(socket.id);
+  socketSession.delete(socket.id);
+}
+
+export function handleDisconnect(io: SocketIOServer, socket: Socket) {
+  cleanupRateLimits(socket.id);
+  const roomId = socketRoom.get(socket.id);
+  const sessionId = socketSession.get(socket.id);
+
+  if (!roomId || !sessionId) {
+    socketRoom.delete(socket.id);
+    socketSession.delete(socket.id);
+    return;
+  }
+
+  const room = rooms.get(roomId);
+  if (!room) {
+    socketRoom.delete(socket.id);
+    socketSession.delete(socket.id);
+    return;
+  }
+
+  const peer = room.peers.get(sessionId);
+  if (!peer || peer.socketId !== socket.id) {
+    socketRoom.delete(socket.id);
+    socketSession.delete(socket.id);
+    return;
+  }
+
+  const session = getSession(sessionId);
+  const now = Date.now();
+
+  peer.presenceState = "RECONNECTING";
+  peer.lastSeenAt = now;
+  if (session) {
+    session.presenceState = "RECONNECTING";
+  }
+
+  // Notify room peers that user is RECONNECTING
+  socket.to(roomId).emit("room:peer-presence", {
+    socketId: socket.id,
+    sessionId,
+    displayName: peer.displayName,
+    presenceState: "RECONNECTING",
+  });
+
+  // Clear existing timer if any
+  if (reconnectTimers.has(sessionId)) {
+    clearTimeout(reconnectTimers.get(sessionId)!);
+  }
+
+  // Set reconnect grace period timer (20 seconds)
+  const timer = setTimeout(() => {
+    reconnectTimers.delete(sessionId);
+    const currentRoom = rooms.get(roomId);
+    if (!currentRoom) return;
+
+    const currentPeer = currentRoom.peers.get(sessionId);
+    if (currentPeer && currentPeer.presenceState === "RECONNECTING" && currentPeer.socketId === socket.id) {
+      currentRoom.peers.delete(sessionId);
+      if (session) {
+        session.currentRoomId = null;
+        session.presenceState = "DISCONNECTED";
+        session.activeSocketId = null;
+      }
+
+      io.to(roomId).emit("room:peer-left", {
+        socketId: socket.id,
+        sessionId,
+        displayName: currentPeer.displayName,
+      });
+
+      io.to(roomId).emit("chat:message", {
+        id: randomUUID(),
+        senderId: "system",
+        senderName: "Campfire",
+        text: `${currentPeer.displayName} stepped away into the night.`,
+        timestamp: Date.now(),
+        isSystem: true,
+      });
+
+      if (currentRoom.peers.size === 0) {
+        rooms.delete(roomId);
+      }
+    }
+  }, RECONNECT_GRACE_MS);
+
+  reconnectTimers.set(sessionId, timer);
+  socketRoom.delete(socket.id);
+  socketSession.delete(socket.id);
 }
 
 export function registerRoomHandlers(io: SocketIOServer, socket: Socket) {
@@ -203,18 +383,19 @@ export function registerRoomHandlers(io: SocketIOServer, socket: Socket) {
   );
 
   socket.on("room:leave", () => {
-    leaveRoom(io, socket);
+    leaveRoom(io, socket, true);
   });
 
   socket.on("room:update-name", (data: { displayName?: unknown }) => {
     if (!checkRateLimit(socket.id, "update-name", { maxEvents: 3, windowMs: 10000 })) return;
     const displayName = typeof data?.displayName === "string" ? data.displayName : "";
     const roomId = socketRoom.get(socket.id);
-    if (!roomId) return;
+    const sessionId = socketSession.get(socket.id);
+    if (!roomId || !sessionId) return;
     const room = rooms.get(roomId);
     if (!room) return;
 
-    const peer = room.peers.get(socket.id);
+    const peer = room.peers.get(sessionId);
     if (!peer) return;
 
     const oldName = peer.displayName;
@@ -222,8 +403,11 @@ export function registerRoomHandlers(io: SocketIOServer, socket: Socket) {
     if (!newName || newName === oldName) return;
 
     peer.displayName = newName;
+    updateSessionName(sessionId, newName);
+
     io.to(roomId).emit("room:peer-updated", {
       socketId: socket.id,
+      sessionId,
       displayName: newName,
     });
 
@@ -241,29 +425,35 @@ export function registerRoomHandlers(io: SocketIOServer, socket: Socket) {
     const roomId = typeof data?.roomId === "string" ? data.roomId : undefined;
     const isSpeaking = typeof data?.isSpeaking === "boolean" ? data.isSpeaking : false;
     const currentRoomId = socketRoom.get(socket.id);
-    if (roomId && currentRoomId === roomId) {
+    const sessionId = socketSession.get(socket.id);
+
+    if (roomId && currentRoomId === roomId && sessionId) {
       const room = rooms.get(roomId);
-      const peer = room?.peers.get(socket.id);
+      const peer = room?.peers.get(sessionId);
       if (peer) {
         peer.isSpeaking = isSpeaking;
+        touchSession(sessionId);
       }
-      socket.to(roomId).emit("voice:speaking", { socketId: socket.id, isSpeaking });
+      socket.to(roomId).emit("voice:speaking", { socketId: socket.id, sessionId, isSpeaking });
     }
   });
 
   socket.on("campfire:stoke", () => {
     if (!checkRateLimit(socket.id, "stoke", { maxEvents: 5, windowMs: 5000 })) return;
     const roomId = socketRoom.get(socket.id);
-    if (!roomId) return;
+    const sessionId = socketSession.get(socket.id);
+    if (!roomId || !sessionId) return;
     const room = rooms.get(roomId);
     if (!room) return;
 
-    const peer = room.peers.get(socket.id);
+    const peer = room.peers.get(sessionId);
     room.stokeCount = (room.stokeCount || 0) + 1;
     room.lastStokedAt = Date.now();
+    touchSession(sessionId);
 
     io.to(roomId).emit("campfire:stoked", {
       socketId: socket.id,
+      sessionId,
       displayName: peer?.displayName || "Someone",
       stokeCount: room.stokeCount,
       timestamp: Date.now(),
@@ -274,50 +464,40 @@ export function registerRoomHandlers(io: SocketIOServer, socket: Socket) {
     if (!checkRateLimit(socket.id, "typing", { maxEvents: 10, windowMs: 5000 })) return;
     const isTyping = Boolean(data?.isTyping);
     const roomId = socketRoom.get(socket.id);
-    if (!roomId) return;
+    const sessionId = socketSession.get(socket.id);
+    if (!roomId || !sessionId) return;
     const room = rooms.get(roomId);
-    const peer = room?.peers.get(socket.id);
+    const peer = room?.peers.get(sessionId);
 
     socket.to(roomId).emit("chat:typing", {
       socketId: socket.id,
+      sessionId,
       displayName: peer?.displayName || "Someone",
       isTyping,
     });
   });
 }
 
-export function handleDisconnect(io: SocketIOServer, socket: Socket) {
-  cleanupRateLimits(socket.id);
-  const roomId = socketRoom.get(socket.id);
-  if (!roomId) return;
-
-  const room = rooms.get(roomId);
-  if (room) {
-    const leavingPeer = room.peers.get(socket.id);
-    room.peers.delete(socket.id);
-
-    socket.to(roomId).emit("room:peer-left", {
-      socketId: socket.id,
-      displayName: leavingPeer?.displayName || "A stranger",
-    });
-
-    if (leavingPeer) {
-      io.to(roomId).emit("chat:message", {
-        id: randomUUID(),
-        senderId: "system",
-        senderName: "Campfire",
-        text: `${leavingPeer.displayName} stepped away into the night.`,
-        timestamp: Date.now(),
-        isSystem: true,
-      });
+// Background cleanup interval (runs every 30s)
+const roomCleanupInterval = setInterval(() => {
+  const now = Date.now();
+  for (const [roomId, room] of rooms.entries()) {
+    for (const [sessionId, peer] of room.peers.entries()) {
+      if (peer.presenceState === "RECONNECTING" && now - peer.lastSeenAt > RECONNECT_GRACE_MS + 5000) {
+        room.peers.delete(sessionId);
+        if (reconnectTimers.has(sessionId)) {
+          clearTimeout(reconnectTimers.get(sessionId)!);
+          reconnectTimers.delete(sessionId);
+        }
+      }
     }
-
     if (room.peers.size === 0) {
       rooms.delete(roomId);
     }
   }
-  socketRoom.delete(socket.id);
-}
+  pruneExpiredSessions();
+}, 30000);
+if (roomCleanupInterval.unref) roomCleanupInterval.unref();
 
 export function getStats() {
   let totalPeers = 0;
@@ -330,4 +510,14 @@ export function getStats() {
   };
 }
 
-export { socketRoom, rooms };
+export function resetRoomsForTesting(): void {
+  for (const timer of reconnectTimers.values()) {
+    clearTimeout(timer);
+  }
+  reconnectTimers.clear();
+  rooms.clear();
+  socketRoom.clear();
+  socketSession.clear();
+}
+
+export { socketRoom, socketSession, rooms, RECONNECT_GRACE_MS };
