@@ -54,7 +54,9 @@ nextApp.prepare().then(() => {
     cors: {
       origin: "*",
       methods: ["GET", "POST"],
+      credentials: true,
     },
+    transports: ["polling", "websocket"],
     pingTimeout: 20000,
     pingInterval: 10000,
     maxHttpBufferSize: 64 * 1024, // 64 KB max per WS packet payload to prevent memory exhaustion

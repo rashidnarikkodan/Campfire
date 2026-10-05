@@ -177,7 +177,11 @@ export function useVoice({ socket, roomId }: UseVoiceProps) {
           );
 
           if (audioSender) {
-            audioSender.replaceTrack(track).catch((e) => {
+            audioSender.replaceTrack(track).then(() => {
+              if (pc.signalingState === "stable" && pc.onnegotiationneeded) {
+                pc.onnegotiationneeded(new Event("negotiationneeded"));
+              }
+            }).catch((e) => {
               console.warn("Failed replacing audio track on peer connection:", e);
             });
           } else {
