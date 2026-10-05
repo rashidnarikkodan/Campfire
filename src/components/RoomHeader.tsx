@@ -85,31 +85,35 @@ export default function RoomHeader({
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Mobile Navigation Button (Top-Right) */}
+          {/* Universal Chat / Fire Navigation Switcher Button (Desktop & Mobile) */}
           {onTabChange && (
-            <div className="md:hidden shrink-0">
-              {activeTab === "campfire" ? (
-                <button
-                  onClick={() => onTabChange("chat")}
-                  title="Open Chat"
-                  className="relative flex items-center justify-center h-8 w-8 rounded-full bg-flame/20 text-flame border border-flame/40 active:scale-95 transition touch-manipulation"
-                >
-                  <MessageSquare size={15} />
-                  {unreadChatCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-emerald-500 px-1 text-[0.6rem] font-extrabold text-forest-night animate-bounce">
-                      {unreadChatCount}
-                    </span>
-                  )}
-                </button>
-              ) : (
-                <button
-                  onClick={() => onTabChange("campfire")}
-                  title="Return to Campfire"
-                  className="flex items-center justify-center h-8 w-8 rounded-full bg-forest-night text-flame border border-flame/40 active:scale-95 transition touch-manipulation"
-                >
-                  <Flame size={16} className="animate-pulse" />
-                </button>
-              )}
+            <div className="shrink-0">
+              <button
+                onClick={() => onTabChange(activeTab === "campfire" ? "chat" : "campfire")}
+                title={activeTab === "campfire" ? "Open Fleeting Chat" : "Return to The Fire"}
+                className={`relative inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition active:scale-95 touch-manipulation border shadow-md min-h-[30px] ${
+                  activeTab === "chat"
+                    ? "bg-flame text-forest-night border-white/20 shadow-flame/30"
+                    : "bg-flame/20 text-flame border-flame/40 hover:bg-flame/30"
+                }`}
+              >
+                {activeTab === "campfire" ? (
+                  <>
+                    <MessageSquare size={13} />
+                    <span>Chat</span>
+                    {unreadChatCount > 0 && (
+                      <span className="flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-emerald-500 px-1 text-[0.6rem] font-extrabold text-forest-night animate-bounce">
+                        {unreadChatCount}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Flame size={14} className="animate-pulse" />
+                    <span>Fire</span>
+                  </>
+                )}
+              </button>
             </div>
           )}
 
