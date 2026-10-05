@@ -61,6 +61,25 @@ nextApp.prepare().then(() => {
   httpServer.listen(port, () => {
     console.log(`🔥 Internet Campfire running at http://localhost:${port}`);
   });
+
+  const shutdown = (signal: string) => {
+    console.log(`\n🔥 ${signal} received. Shutting down Internet Campfire server gracefully...`);
+    io.close(() => {
+      console.log("WebSocket server closed.");
+      httpServer.close(() => {
+        console.log("HTTP server closed.");
+        process.exit(0);
+      });
+    });
+
+    setTimeout(() => {
+      console.warn("Forced shutdown after 10s timeout.");
+      process.exit(1);
+    }, 10000);
+  };
+
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
 }).catch((err) => {
   console.error("Error starting server:", err);
   process.exit(1);
