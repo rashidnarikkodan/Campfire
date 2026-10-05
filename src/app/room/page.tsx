@@ -173,7 +173,7 @@ function RoomContent() {
       </div>
 
       {/* Main Viewport Workspace Layer */}
-      <div className="relative z-10 flex flex-1 min-h-0 w-full overflow-hidden">
+      <div className="relative z-10 flex flex- min-h-0 w-full overflow-hidden">
         {/* Campfire Stage Overlay: Peer 3D Ring & Floating Snippets */}
         <section
           className={`relative flex-1 h-full w-full overflow-hidden transition-all duration-300 ease-in-out ${

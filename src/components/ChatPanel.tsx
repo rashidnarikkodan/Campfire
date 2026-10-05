@@ -58,9 +58,9 @@ export default function ChatPanel({ socket, roomId }: ChatPanelProps) {
   const otherTypingUsers = typingUsers.filter((u) => u.socketId !== socket?.id);
 
   return (
-    <div className="flex h-full min-h-[320px] w-full flex-col rounded-2xl bg-forest-night/60 backdrop-blur-xl border border-ash/[0.08] shadow-lg overflow-hidden">
+    <div className="flex h-full w-full flex-col bg-forest-night sm:bg-forest-night/90 sm:backdrop-blur-2xl border-l border-ash/[0.08] shadow-lg overflow-hidden">
       {/* Header */}
-      <header className="flex items-center justify-between border-b border-ash/[0.08] px-3.5 py-2.5 shrink-0 bg-forest-night/40">
+      <header className="flex items-center justify-between border-b border-ash/[0.08] px-3.5 py-2.5 shrink-0 bg-forest-night">
         <div className="flex items-center gap-2">
           <MessageCircle size={16} className="text-flame" />
           <div>
@@ -78,7 +78,7 @@ export default function ChatPanel({ socket, roomId }: ChatPanelProps) {
       )}
 
       {/* Messages Scroll Area */}
-      <div className="scrollbar-none flex-1 space-y-3 overflow-y-auto p-3 sm:p-4">
+      <div className="scrollbar-none flex-1 space-y-3 overflow-y-auto p-3 sm:p-4 bg-forest-night">
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center p-4 text-center text-xs leading-6 text-smoke/70">
             <Sparkles size={24} className="mb-2 text-ember/50 animate-pulse" />
@@ -147,8 +147,8 @@ export default function ChatPanel({ socket, roomId }: ChatPanelProps) {
         <div ref={endRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="p-2.5 shrink-0 bg-forest-night/60 border-t border-ash/[0.06]">
+      {/* Input Area (Solid Background to Hide Canvas Embers Under Soft Keyboard) */}
+      <div className="p-2.5 shrink-0 bg-forest-night border-t border-ash/[0.08]">
         <div className="campfire-input flex items-end gap-2 p-2">
           <textarea
             value={text}
