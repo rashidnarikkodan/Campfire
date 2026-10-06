@@ -102,7 +102,7 @@ export default function HomePage() {
             <Flame size={17} className="text-flame" />
           </div>
           <span className="font-bold tracking-wider text-ash text-xs sm:text-sm uppercase">
-            Internet Campfire
+            Campfire
           </span>
         </div>
 
@@ -250,7 +250,7 @@ export default function HomePage() {
           </h2>
           <p className="text-xs sm:text-sm leading-relaxed text-smoke">
             Most platforms are designed to trap your attention, build an archive, and monetize your
-            identity. Internet Campfire is built for human moments that leave no trace.
+            identity. Campfire is built for human moments that leave no trace.
           </p>
         </div>
 
@@ -293,7 +293,7 @@ export default function HomePage() {
 
       {/* Minimal Footer */}
       <footer className="relative z-10 border-t border-ash/[0.06] py-6 sm:py-8 text-center text-xs text-smoke/60">
-        <p>Internet Campfire • Ephemeral, private, and open source.</p>
+        <p>Campfire • Ephemeral, private, and open source.</p>
       </footer>
     </main>
   );

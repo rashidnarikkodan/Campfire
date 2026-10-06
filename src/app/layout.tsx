@@ -12,7 +12,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Internet Campfire",
+  title: "Campfire",
   description: "A calm, anonymous space to share fleeting conversations.",
   manifest: "/manifest.json",
   icons: {

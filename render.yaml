@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: internet-campfire-server
+    name: campfire-server
     env: node
     region: singapore # or oregon, frankfurt, etc.
     plan: free # or starter
@@ -13,4 +13,4 @@ services:
       - key: PORT
         value: 10000
       - key: CORS_ORIGIN
-        value: https://internet-campfire.vercel.app
+        value: https://campfire.vercel.app

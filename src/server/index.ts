@@ -47,7 +47,7 @@ export function createCampfireServer(options: ServerOptions = {}): CampfireServe
   // Root endpoint & health checks
   app.get("/", (_req, res) => {
     res.json({
-      name: "Internet Campfire Server",
+      name: "Campfire Server",
       status: "online",
       version: "1.0.0",
       stats: getStats(),
@@ -149,7 +149,7 @@ export function createCampfireServer(options: ServerOptions = {}): CampfireServe
         .listen(targetPort, () => {
           const addr = httpServer.address();
           const actualPort = typeof addr === "object" && addr ? addr.port : targetPort;
-          logInfo(`🔥 Internet Campfire server running on port ${actualPort}`);
+          logInfo(`🔥 Campfire server running on port ${actualPort}`);
           resolve(actualPort);
         })
         .on("error", reject);

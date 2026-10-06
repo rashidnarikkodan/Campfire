@@ -1,8 +1,8 @@
 import { create } from "zustand";
 import { generateSessionId, generateName } from "@/lib/nameGenerator";
 
-const SESSION_KEY = "internet-campfire-session";
-const NAME_KEY = "internet-campfire-name";
+const SESSION_KEY = "campfire-session";
+const NAME_KEY = "campfire-name";
 
 interface UserState {
   sessionId: string | null;

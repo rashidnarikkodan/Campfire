@@ -1,4 +1,4 @@
-# 🔥 Internet Campfire
+# 🔥 Campfire
 
 > A cozy, real-time spatial voice and text chat application centered around an interactive virtual campfire.
 
@@ -13,7 +13,7 @@
 
 ## 🌟 Overview
 
-**Internet Campfire** brings people together around a digital hearth. Whether hanging out with friends, holding relaxed team huddles, or hosting late-night conversations, Internet Campfire pairs real-time peer-to-peer voice and text chat with an interactive, atmospheric soundscape and dynamic visual campfire.
+**Campfire** brings people together around a digital hearth. Whether hanging out with friends, holding relaxed team huddles, or hosting late-night conversations, Campfire pairs real-time peer-to-peer voice and text chat with an interactive, atmospheric soundscape and dynamic visual campfire.
 
 ---
 
@@ -56,8 +56,8 @@
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/rashidnarikkodan/internet-campfire.git
-   cd internet-campfire
+   git clone https://github.com/rashidnarikkodan/campfire.git
+   cd campfire
    ```
 
 2. **Install dependencies:**
@@ -99,7 +99,7 @@ In the project directory, you can run:
 ## 📁 Project Architecture
 
 ```
-internet-campfire/
+campfire/
 ├── public/                 # PWA icons, manifest.json & service worker
 ├── server.ts               # Custom Express server integrating Socket.IO & Next.js
 ├── src/

@@ -1,5 +1,5 @@
 /**
- * In-memory real-time metrics collector for Internet Campfire.
+ * In-memory real-time metrics collector for Campfire.
  */
 
 interface MetricsState {

@@ -66,7 +66,7 @@ export function useRoom({
       }
       if (serverSessionId && typeof window !== "undefined") {
         useUserStore.setState({ sessionId: serverSessionId });
-        window.localStorage.setItem("internet-campfire-session", serverSessionId);
+        window.localStorage.setItem("campfire-session", serverSessionId);
       }
     };
 
